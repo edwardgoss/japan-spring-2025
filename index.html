@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Japan Spring 2025</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+  :root{
+    --bg:#f5f5f5;
+    --text:#222;
+    --text-secondary:#888;
+    --header-bg:rgba(245,245,245,.85);
+    --gap:6px;
+    --lightbox-bg:rgba(0,0,0,.92);
+    --menu-bg:#fff;
+    --menu-shadow:0 4px 20px rgba(0,0,0,.12);
+    --menu-hover:rgba(0,0,0,.04);
+    --menu-active-bg:#222;
+    --menu-active-text:#fff;
+    --menu-border:rgba(0,0,0,.06);
+  }
+  @media(prefers-color-scheme:dark){
+    :root{
+      --bg:#111;
+      --text:#e0e0e0;
+      --text-secondary:#777;
+      --header-bg:rgba(17,17,17,.85);
+      --menu-bg:#1e1e1e;
+      --menu-shadow:0 4px 20px rgba(0,0,0,.4);
+      --menu-hover:rgba(255,255,255,.06);
+      --menu-active-bg:#e0e0e0;
+      --menu-active-text:#111;
+      --menu-border:rgba(255,255,255,.08);
+    }
+  }
+
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Libre Baskerville',Georgia,'Times New Roman',serif;
+    min-height:100vh;
+  }
+
+  /* ── Header ── */
+  header{
+    position:sticky;top:0;z-index:50;
+    background:var(--header-bg);
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    padding:12px 24px 10px;
+    text-align:center;
+  }
+
+  .header-top{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    position:relative;
+  }
+
+  header h1{
+    font-size:1.4rem;
+    font-weight:600;
+    letter-spacing:.04em;
+    line-height:1.3;
+  }
+  .header-byline{
+    font-weight:400;
+    font-size:.7rem;
+    opacity:.4;
+    letter-spacing:.02em;
+  }
+
+  /* Hamburger button */
+  .menu-btn{
+    position:absolute;
+    right:0;top:50%;transform:translateY(-50%);
+    background:none;border:none;
+    color:var(--text);
+    font-size:1.2rem;
+    cursor:pointer;
+    opacity:.5;
+    transition:opacity .2s;
+    padding:4px 2px;
+    line-height:1;
+  }
+  .menu-btn:hover{opacity:.8}
+
+  /* Now showing label */
+  .now-showing{
+    font-size:.7rem;
+    color:var(--text-secondary);
+    margin-top:3px;
+    height:1.1em;
+    letter-spacing:.02em;
+    transition:opacity .25s ease;
+  }
+  .now-showing.hidden{opacity:0}
+  .now-showing-label{
+    opacity:.6;
+  }
+  .now-showing-city{
+    font-style:italic;
+  }
+  .now-showing-filtered{
+    opacity:.4;
+    font-size:.6rem;
+  }
+
+  /* ── Dropdown menu ── */
+  .menu-overlay{
+    position:fixed;inset:0;z-index:49;
+    display:none;
+  }
+  .menu-overlay.open{display:block}
+
+  .menu-dropdown{
+    position:absolute;
+    top:100%;right:24px;
+    background:var(--menu-bg);
+    border-radius:8px;
+    box-shadow:var(--menu-shadow);
+    min-width:200px;
+    padding:6px 0;
+    z-index:51;
+    opacity:0;
+    transform:translateY(-4px);
+    pointer-events:none;
+    transition:opacity .15s ease,transform .15s ease;
+  }
+  .menu-dropdown.open{
+    opacity:1;
+    transform:translateY(0);
+    pointer-events:auto;
+  }
+
+  .menu-item{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    width:100%;
+    background:none;border:none;
+    padding:9px 16px;
+    font-family:'Libre Baskerville',Georgia,'Times New Roman',serif;
+    font-size:.75rem;
+    color:var(--text);
+    cursor:pointer;
+    text-align:left;
+    transition:background .15s;
+    letter-spacing:.02em;
+  }
+  .menu-item:hover{
+    background:var(--menu-hover);
+  }
+  .menu-item.active{
+    background:var(--menu-active-bg);
+    color:var(--menu-active-text);
+  }
+  .menu-item-count{
+    opacity:.4;
+    font-size:.65rem;
+    margin-left:12px;
+    font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-variant-numeric:tabular-nums;
+  }
+  .menu-item.active .menu-item-count{
+    opacity:.6;
+  }
+
+  .menu-divider{
+    height:1px;
+    background:var(--menu-border);
+    margin:4px 0;
+  }
+
+  /* ── Masonry grid ── */
+  .gallery{
+    position:relative;
+    padding:var(--gap);
+    max-width:1800px;
+    margin:0 auto;
+    transition:opacity .1s ease;
+  }
+  .gallery.settling{opacity:.98}
+  .gallery.settling-deep{opacity:.95;transition:opacity .18s ease}
+
+  .gallery-item{
+    position:absolute;
+    cursor:pointer;
+    border-radius:4px;
+    overflow:hidden;
+    line-height:0;
+    opacity:0;
+    transform:translateY(12px);
+    transition:opacity .4s ease,transform .4s ease;
+  }
+  .gallery-item.loaded{
+    opacity:1;
+    transform:translateY(0);
+  }
+  .gallery-item.filtered-out{
+    display:none !important;
+  }
+  .gallery-item img{
+    width:100%;
+    height:auto;
+    display:block;
+    transition:transform .3s ease;
+  }
+  .gallery-item:hover img{
+    transform:scale(1.03);
+  }
+
+  /* ── Lightbox ── */
+  .lightbox{
+    position:fixed;inset:0;z-index:100;
+    background:var(--lightbox-bg);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    opacity:0;
+    transition:opacity .25s ease;
+  }
+  .lightbox.active{
+    display:flex;
+    opacity:1;
+  }
+  .lightbox img{
+    max-width:92vw;
+    max-height:85vh;
+    object-fit:contain;
+    border-radius:4px;
+    user-select:none;
+    -webkit-user-drag:none;
+  }
+
+  .lightbox-close{
+    position:absolute;top:16px;right:20px;
+    background:none;border:none;
+    color:#fff;font-size:2rem;
+    cursor:pointer;opacity:.7;
+    transition:opacity .2s;
+    line-height:1;
+    z-index:110;
+  }
+  .lightbox-close:hover{opacity:1}
+
+  .lightbox-nav{
+    position:absolute;top:50%;transform:translateY(-50%);
+    background:none;border:none;
+    color:#fff;font-size:2.4rem;
+    cursor:pointer;opacity:.5;
+    transition:opacity .2s;
+    padding:12px;
+    z-index:110;
+    user-select:none;
+  }
+  .lightbox-nav:hover{opacity:1}
+  .lightbox-prev{left:12px}
+  .lightbox-next{right:12px}
+
+  .lightbox-caption{
+    position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
+    text-align:center;
+    z-index:110;
+    max-width:80vw;
+  }
+  .lightbox-location{
+    color:#fff;
+    font-family:'Libre Baskerville',Georgia,'Times New Roman',serif;
+    font-size:.85rem;
+    letter-spacing:.02em;
+    line-height:1.4;
+  }
+  .lightbox-city{opacity:.5}
+  .lightbox-place{opacity:.85}
+  .lightbox-counter{
+    font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-variant-numeric:tabular-nums;
+    font-size:.7rem;
+    color:rgba(255,255,255,.4);
+    margin-top:4px;
+    letter-spacing:.04em;
+    line-height:1;
+  }
+  .lightbox-sep{opacity:.45;margin:0 2px}
+
+  .lightbox-spinner{
+    position:absolute;
+    width:36px;height:36px;
+    border:3px solid rgba(255,255,255,.2);
+    border-top-color:#fff;
+    border-radius:50%;
+    animation:spin .7s linear infinite;
+    display:none;
+  }
+  .lightbox.loading .lightbox-spinner{display:block}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .jp{
+  opacity:.65;
+  font-size:.85em;
+  margin-left:.25em;
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,
+               "Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",sans-serif;
+  }
+
+  /* ── Mobile ── */
+  @media(max-width:600px){
+    header{padding:10px 16px 8px}
+    header h1{font-size:1.1rem}
+    .header-byline{font-size:.6rem}
+    .now-showing{font-size:.6rem}
+    .menu-btn{font-size:1.1rem}
+    .menu-dropdown{right:16px;min-width:180px}
+    .menu-item{padding:8px 14px;font-size:.7rem}
+    .lightbox-location{font-size:.75rem}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <h1>Japan Spring 2025 <span class="header-byline">&middot; Edward Goss</span></h1>
+    <button class="menu-btn" id="menuBtn" aria-label="Filter menu">&#9776;</button>
+  </div>
+  <div class="now-showing" id="nowShowing"></div>
+  <div class="menu-dropdown" id="menuDropdown"></div>
+</header>
+<div class="menu-overlay" id="menuOverlay"></div>
+
+<div class="gallery" id="gallery"></div>
+
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-close" aria-label="Close">&times;</button>
+  <button class="lightbox-nav lightbox-prev" aria-label="Previous">&lsaquo;</button>
+  <button class="lightbox-nav lightbox-next" aria-label="Next">&rsaquo;</button>
+  <div class="lightbox-spinner"></div>
+  <img src="" alt="">
+  <div class="lightbox-caption">
+    <div class="lightbox-location">
+      <span class="lightbox-city"></span>
+      <span class="lightbox-place"></span>
+    </div>
+    <div class="lightbox-counter"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const TOTAL=227;
+  const GAP=6;
+
+  // ── City ranges ──
+  const CITY_RANGES=[
+    {city:'Tokyo',       ranges:[[1,23],[44,99]]},
+    {city:'Kamakura & Enoshima', ranges:[[24,43]]},
+    {city:'Kyoto',       ranges:[[100,211],[217,227]]},
+    {city:'Osaka',       ranges:[[212,216]]}
+  ];
+
+  // ── Per-photo captions ──
+  const CAPTIONS={
+  1: 'Meiji Jingū Forest, Shibuya <span class="jp">(明治神宮の森)</span>',
+  2: 'Meiji Jingū Forest, Shibuya <span class="jp">(明治神宮の森)</span>',
+  3: 'Meiji Jingū Shrine, Shibuya <span class="jp">(明治神宮)</span>',
+  4: 'Meiji Jingū Shrine, Shibuya <span class="jp">(明治神宮)</span>',
+  5: 'Meiji Jingū Forest, Shibuya <span class="jp">(明治神宮の森)</span>',
+  6: 'Takeshita Street, Harajuku <span class="jp">(竹下通り)</span>',
+  7: 'Fender Flagship, Harajuku <span class="jp">(フェンダーフラッグシップ東京)</span>',
+  8: 'Harajuku, Shibuya <span class="jp">(原宿)</span>',
+  9: 'Harajuku, Shibuya <span class="jp">(原宿)</span>',
+  10: 'Harajuku, Shibuya <span class="jp">(原宿)</span>',
+  11: 'Kitasandō, Shibuya <span class="jp">(北参道)</span>',
+  12: 'Shinjuku Gyoen National Garden <span class="jp">(新宿御苑)</span>',
+  13: 'Shinjuku Gyoen National Garden <span class="jp">(新宿御苑)</span>',
+  14: 'Shinjuku Gyoen National Garden <span class="jp">(新宿御苑)</span>',
+  15: 'Shinjuku Gyoen National Garden <span class="jp">(新宿御苑)</span>',
+  16: 'Shinjuku Gyoen National Garden <span class="jp">(新宿御苑)</span>',
+  17: 'Shinjuku Gyoen National Garden <span class="jp">(新宿御苑)</span>',
+  18: 'Cat Street, Omotesandō <span class="jp">(キャットストリート)</span>',
+  19: 'Cat Street, Omotesandō <span class="jp">(キャットストリート)</span>',
+  20: 'Cat Street, Omotesandō <span class="jp">(キャットストリート)</span>',
+  21: 'Cat Street, Omotesandō <span class="jp">(キャットストリート)</span>',
+  22: 'Tower Records, Shibuya <span class="jp">(タワーレコード渋谷)</span>',
+  23: 'Shibuya Crossing <span class="jp">(渋谷スクランブル交差点)</span>',
+  24: 'Streets of Kamakura <span class="jp">(鎌倉の街並み)</span>',
+  25: 'Streets of Kamakura <span class="jp">(鎌倉の街並み)</span>',
+  26: 'Streets of Kamakura <span class="jp">(鎌倉の街並み)</span>',
+  27: 'Streets of Kamakura <span class="jp">(鎌倉の街並み)</span>',
+  28: 'Another Day Café, Kamakura <span class="jp">(アナザーデイカフェ)</span>',
+  29: 'Streets of Kamakura <span class="jp">(鎌倉の街並み)</span>',
+  30: 'Yuigahama Beach <span class="jp">(由比ヶ浜)</span>',
+  31: 'Yuigahama Beach <span class="jp">(由比ヶ浜)</span>',
+  32: 'Yuigahama Beach <span class="jp">(由比ヶ浜)</span>',
+  33: 'Streets of Kamakura <span class="jp">(鎌倉の街並み)</span>',
+  34: 'Kōtoku-in <span class="jp">(高徳院)</span>',
+  35: 'The Daibutsu, Kōtoku-in <span class="jp">(鎌倉大仏)</span>',
+  36: 'Enoden Line, Kamakura → Enoshima <span class="jp">(江ノ電)</span>',
+  37: 'Bridge to Enoshima <span class="jp">(江の島大橋)</span>',
+  38: 'Enoshima Benzaiten Nakamise Street <span class="jp">(江の島弁財天仲見世通り)</span>',
+  39: 'Enoshima Benzaiten Nakamise Street <span class="jp">(江の島弁財天仲見世通り)</span>',
+  40: 'Enoshima Harbor <span class="jp">(江の島港)</span>',
+  41: 'Enoshima Island Spa <span class="jp">(江の島アイランドスパ)</span>',
+  42: 'Enoden Line, Enoshima → Kamakura <span class="jp">(江ノ電)</span>',
+  43: 'Enoden Line, Enoshima → Kamakura <span class="jp">(江ノ電)</span>',
+  44: 'teamLab Borderless, Azabudai Hills <span class="jp">(チームラボ ボーダレス)</span>',
+  45: 'teamLab Borderless, Azabudai Hills <span class="jp">(チームラボ ボーダレス)</span>',
+  46: 'teamLab Borderless, Azabudai Hills <span class="jp">(チームラボ ボーダレス)</span>',
+  47: 'teamLab Borderless, Azabudai Hills <span class="jp">(チームラボ ボーダレス)</span>',
+  48: 'teamLab Borderless, Azabudai Hills <span class="jp">(チームラボ ボーダレス)</span>',
+  49: 'teamLab Borderless, Azabudai Hills <span class="jp">(チームラボ ボーダレス)</span>',
+  50: 'Azabudai Hills, Minato <span class="jp">(麻布台ヒルズ)</span>',
+  51: 'Azabudai Hills, Minato <span class="jp">(麻布台ヒルズ)</span>',
+  52: 'Azabudai Hills, Minato <span class="jp">(麻布台ヒルズ)</span>',
+  53: 'Azabudai Hills, Minato <span class="jp">(麻布台ヒルズ)</span>',
+  54: 'Imperial Palace East Gardens <span class="jp">(皇居東御苑)</span>',
+  55: 'Imperial Palace East Gardens <span class="jp">(皇居東御苑)</span>',
+  56: 'Imperial Palace East Gardens <span class="jp">(皇居東御苑)</span>',
+  57: 'Wadakura Fountain Park <span class="jp">(和田倉噴水公園)</span>',
+  58: 'Wadakura Fountain Park <span class="jp">(和田倉噴水公園)</span>',
+  59: 'Tokyo Station <span class="jp">(東京駅)</span>',
+  60: 'Nihonbashi Takashimaya <span class="jp">(日本橋高島屋)</span>',
+  61: 'Streets of Chūō <span class="jp">(中央区の街並み)</span>',
+  62: 'Pokémon Center Tokyo DX <span class="jp">(ポケモンセンターDX)</span>',
+  63: 'Streets of Ginza <span class="jp">(銀座)</span>',
+  64: 'Buvette, Hibiya <span class="jp">(ブヴェット)</span>',
+  65: 'Buvette, Hibiya <span class="jp">(ブヴェット)</span>',
+  66: 'Buvette, Hibiya <span class="jp">(ブヴェット)</span>',
+  67: 'Buvette, Hibiya <span class="jp">(ブヴェット)</span>',
+  68: 'Sensō-ji, Asakusa <span class="jp">(浅草寺)</span>',
+  69: 'Sensō-ji, Asakusa <span class="jp">(浅草寺)</span>',
+  70: 'Taco-Taco, Asakusa <span class="jp">(タコタコ)</span>',
+  71: 'Ueno Park <span class="jp">(上野公園)</span>',
+  72: 'Ueno Park <span class="jp">(上野公園)</span>',
+  73: 'Ueno Park <span class="jp">(上野公園)</span>',
+  74: 'Ueno Park <span class="jp">(上野公園)</span>',
+  75: 'Memory Lane, Shinjuku <span class="jp">(思い出横丁)</span>',
+  76: 'Memory Lane, Shinjuku <span class="jp">(思い出横丁)</span>',
+  77: 'Memory Lane, Shinjuku <span class="jp">(思い出横丁)</span>',
+  78: 'Meguro River, Nakameguro <span class="jp">(目黒川)</span>',
+  79: 'Meguro River, Nakameguro <span class="jp">(目黒川)</span>',
+  80: 'Meguro River, Nakameguro <span class="jp">(目黒川)</span>',
+  81: 'Meguro River, Nakameguro <span class="jp">(目黒川)</span>',
+  82: 'Meguro River, Nakameguro <span class="jp">(目黒川)</span>',
+  83: 'Meguro River, Nakameguro <span class="jp">(目黒川)</span>',
+  84: 'Meguro River, Nakameguro <span class="jp">(目黒川)</span>',
+  85: 'Streets of Nakameguro <span class="jp">(中目黒の街並み)</span>',
+  86: 'Streets of Nakameguro <span class="jp">(中目黒の街並み)</span>',
+  87: 'Streets of Daikanyama <span class="jp">(代官山の街並み)</span>',
+  88: 'Streets of Daikanyama <span class="jp">(代官山の街並み)</span>',
+  89: 'Daikanyama T-Site <span class="jp">(代官山 蔦屋書店)</span>',
+  90: 'Daikanyama T-Site <span class="jp">(代官山 蔦屋書店)</span>',
+  91: 'Daikanyama T-Site <span class="jp">(代官山 蔦屋書店)</span>',
+  92: 'Daikanyama T-Site <span class="jp">(代官山 蔦屋書店)</span>',
+  93: 'Daikanyama T-Site <span class="jp">(代官山 蔦屋書店)</span>',
+  94: 'Streets of Daikanyama <span class="jp">(代官山の街並み)</span>',
+  95: 'Miyashita Park, Shibuya <span class="jp">(宮下パーク)</span>',
+  96: 'Miyashita Park, Shibuya <span class="jp">(宮下パーク)</span>',
+  97: 'Miyashita Park, Shibuya <span class="jp">(宮下パーク)</span>',
+  98: 'Shibuya Crossing <span class="jp">(渋谷スクランブル交差点)</span>',
+  99: 'Shinkansen, Tokyo Station <span class="jp">(新幹線)</span>',
+  100: 'Hotel Resol Trinity <span class="jp">(ホテルリソルトリニティ)</span>',
+  101: 'Kamo River <span class="jp">(鴨川)</span>',
+  102: 'Streets of Nakagyō <span class="jp">(中京区の街並み)</span>',
+  103: 'Streets of Nakagyō <span class="jp">(中京区の街並み)</span>',
+  104: 'Ramen Naraji, Nakagyō <span class="jp">(拉麺 ならじ)</span>',
+  105: 'Nijō Castle, Nakagyō <span class="jp">(二条城)</span>',
+  106: 'Nijō Castle, Nakagyō <span class="jp">(二条城)</span>',
+  107: 'Streets of Gion <span class="jp">(祇園)</span>',
+  108: 'Streets of Gion <span class="jp">(祇園)</span>',
+  109: 'Yasaka Shrine <span class="jp">(八坂神社)</span>',
+  110: 'Yasaka Shrine <span class="jp">(八坂神社)</span>',
+  111: 'Yasaka Shrine <span class="jp">(八坂神社)</span>',
+  112: 'Streets of Gion <span class="jp">(祇園)</span>',
+  113: 'Gion Kirara <span class="jp">(祇園きらら)</span>',
+  114: 'Gion Kirara <span class="jp">(祇園きらら)</span>',
+  115: 'Gion Kirara <span class="jp">(祇園きらら)</span>',
+  116: 'Kennin-ji Temple <span class="jp">(建仁寺)</span>',
+  117: 'Kennin-ji Temple <span class="jp">(建仁寺)</span>',
+  118: 'Ishibe Kōji <span class="jp">(石塀小路)</span>',
+  119: 'Ishibe Kōji <span class="jp">(石塀小路)</span>',
+  120: 'Kōdai-ji Temple <span class="jp">(高台寺)</span>',
+  121: 'Kōdai-ji Temple <span class="jp">(高台寺)</span>',
+  122: 'Kōdai-ji Temple <span class="jp">(高台寺)</span>',
+  123: 'Streets of Kiyomizu <span class="jp">(清水の街並み)</span>',
+  124: 'Yasaka Pagoda, Kiyomizu <span class="jp">(八坂の塔)</span>',
+  125: 'Studio Ghibli Store, Kiyomizu <span class="jp">(どんぐり共和国)</span>',
+  126: 'Studio Ghibli Store, Kiyomizu <span class="jp">(どんぐり共和国)</span>',
+  127: 'Streets of Kiyomizu <span class="jp">(清水の街並み)</span>',
+  128: 'Streets of Kiyomizu <span class="jp">(清水の街並み)</span>',
+  129: 'Streets of Kiyomizu <span class="jp">(清水の街並み)</span>',
+  130: 'Streets of Kiyomizu <span class="jp">(清水の街並み)</span>',
+  131: 'Yasaka Pagoda, Kiyomizu <span class="jp">(八坂の塔)</span>',
+  132: 'Yasaka Pagoda, Kiyomizu <span class="jp">(八坂の塔)</span>',
+  133: 'Streets of Kiyomizu <span class="jp">(清水の街並み)</span>',
+  134: 'Niō-mon Gate, Kiyomizu <span class="jp">(仁王門)</span>',
+  135: 'Niō-mon Gate, Kiyomizu <span class="jp">(仁王門)</span>',
+  136: 'Kiyomizu-dera, Kiyomizu <span class="jp">(清水寺)</span>',
+  137: 'Kiyomizu-dera, Kiyomizu <span class="jp">(清水寺)</span>',
+  138: 'Kiyomizu-dera, Kiyomizu <span class="jp">(清水寺)</span>',
+  139: 'The Hotel Seiryū, Kiyomizu <span class="jp">(ザ・ホテル青龍)</span>',
+  140: 'K36 at The Hotel Seiryū, Kiyomizu <span class="jp">(K36)</span>',
+  141: 'K36 at The Hotel Seiryū, Kiyomizu <span class="jp">(K36)</span>',
+  142: 'K36 at The Hotel Seiryū, Kiyomizu <span class="jp">(K36)</span>',
+  143: 'Streets of Nakagyō <span class="jp">(中京区の街並み)</span>',
+  144: 'Fushimi Inari Taisha <span class="jp">(伏見稲荷大社)</span>',
+  145: 'Fushimi Inari Taisha <span class="jp">(伏見稲荷大社)</span>',
+  146: 'Fushimi Inari Taisha <span class="jp">(伏見稲荷大社)</span>',
+  147: 'Fushimi Inari Taisha <span class="jp">(伏見稲荷大社)</span>',
+  148: 'Fushimi Inari Taisha <span class="jp">(伏見稲荷大社)</span>',
+  149: 'Fushimi Inari Taisha <span class="jp">(伏見稲荷大社)</span>',
+  150: 'Fushimi Inari Taisha <span class="jp">(伏見稲荷大社)</span>',
+  151: 'Fushimi Inari Taisha <span class="jp">(伏見稲荷大社)</span>',
+  152: 'Fushimi Inari Taisha <span class="jp">(伏見稲荷大社)</span>',
+  153: 'Fushimi Inari Taisha <span class="jp">(伏見稲荷大社)</span>',
+  154: 'Sushi Sei, Nakagyō <span class="jp">(寿司 清)</span>',
+  155: 'Sushi Sei, Nakagyō <span class="jp">(寿司 清)</span>',
+  156: 'Nanzen-ji <span class="jp">(南禅寺)</span>',
+  157: 'Eikan-dō <span class="jp">(永観堂)</span>',
+  158: 'Eikan-dō <span class="jp">(永観堂)</span>',
+  159: 'Eikan-dō <span class="jp">(永観堂)</span>',
+  160: 'Streets of Sakyō <span class="jp">(左京区の街並み)</span>',
+  161: 'Philosopher’s Path <span class="jp">(哲学の道)</span>',
+  162: 'Philosopher’s Path <span class="jp">(哲学の道)</span>',
+  163: 'Philosopher’s Path <span class="jp">(哲学の道)</span>',
+  164: 'Philosopher’s Path <span class="jp">(哲学の道)</span>',
+  165: 'Philosopher’s Path <span class="jp">(哲学の道)</span>',
+  166: 'Philosopher’s Path <span class="jp">(哲学の道)</span>',
+  167: 'Philosopher’s Path <span class="jp">(哲学の道)</span>',
+  168: 'Philosopher’s Path <span class="jp">(哲学の道)</span>',
+  169: 'Hōnen-in Temple <span class="jp">(法然院)</span>',
+  170: 'Hōnen-in Temple <span class="jp">(法然院)</span>',
+  171: 'Hōnen-in Temple <span class="jp">(法然院)</span>',
+  172: 'Philosopher’s Path <span class="jp">(哲学の道)</span>',
+  173: 'Ginkaku-ji <span class="jp">(銀閣寺)</span>',
+  174: 'Ginkaku-ji <span class="jp">(銀閣寺)</span>',
+  175: 'Streets of Sakyō <span class="jp">(左京区の街並み)</span>',
+  176: 'Streets of Sakyō <span class="jp">(左京区の街並み)</span>',
+  177: 'Streets of Sakyō <span class="jp">(左京区の街並み)</span>',
+  178: 'Kamo River <span class="jp">(鴨川)</span>',
+  179: 'Kiyamachi-dōri <span class="jp">(木屋町通)</span>',
+  180: 'Nishiki Market <span class="jp">(錦市場)</span>',
+  181: 'Nishiki Market <span class="jp">(錦市場)</span>',
+  182: 'master-piece Coffee, Nakagyō <span class="jp">(マスターピースコーヒー)</span>',
+  183: 'Arashiyama Bamboo Grove <span class="jp">(嵐山竹林)</span>',
+  184: 'Arashiyama Bamboo Grove <span class="jp">(嵐山竹林)</span>',
+  185: 'Katsura River, Arashiyama <span class="jp">(桂川)</span>',
+  186: 'Streets of Arashiyama <span class="jp">(嵐山の街並み)</span>',
+  187: '19th-Century Hall <span class="jp">(明治期の建築)</span>',
+  188: '19th-Century Hall <span class="jp">(明治期の建築)</span>',
+  189: '19th-Century Hall <span class="jp">(明治期の建築)</span>',
+  190: 'Yawaragi no Michi, Kameoka <span class="jp">(和らぎの道)</span>',
+  191: 'Yawaragi no Michi, Kameoka <span class="jp">(和らぎの道)</span>',
+  192: 'Yawaragi no Michi, Kameoka <span class="jp">(和らぎの道)</span>',
+  193: 'Yawaragi no Michi, Kameoka <span class="jp">(和らぎの道)</span>',
+  194: 'Yawaragi no Michi, Kameoka <span class="jp">(和らぎの道)</span>',
+  195: 'Kiyamachi-dōri <span class="jp">(木屋町通)</span>',
+  196: 'Nara Park <span class="jp">(奈良公園)</span>',
+  197: 'Nara Park <span class="jp">(奈良公園)</span>',
+  198: 'Nara Park <span class="jp">(奈良公園)</span>',
+  199: 'Nara Park <span class="jp">(奈良公園)</span>',
+  200: 'Nara Park <span class="jp">(奈良公園)</span>',
+  201: 'Tōdai-ji <span class="jp">(東大寺)</span>',
+  202: 'Tōdai-ji <span class="jp">(東大寺)</span>',
+  203: 'Tōdai-ji <span class="jp">(東大寺)</span>',
+  204: 'Tōdai-ji <span class="jp">(東大寺)</span>',
+  205: 'Nara Park <span class="jp">(奈良公園)</span>',
+  206: 'Nara Park <span class="jp">(奈良公園)</span>',
+  207: 'Nara Park <span class="jp">(奈良公園)</span>',
+  208: 'Isuien Garden <span class="jp">(依水園)</span>',
+  209: 'Isuien Garden <span class="jp">(依水園)</span>',
+  210: 'Isuien Garden <span class="jp">(依水園)</span>',
+  211: 'Isuien Garden <span class="jp">(依水園)</span>',
+  212: 'Streets of Dōtonbori <span class="jp">(道頓堀)</span>',
+  213: 'GiGO Arcade, Dōtonbori <span class="jp">(ギーゴ)</span>',
+  214: 'GiGO Arcade, Dōtonbori <span class="jp">(ギーゴ)</span>',
+  215: 'Dōtonbori Canal <span class="jp">(道頓堀川)</span>',
+  216: 'Streets of Dōtonbori <span class="jp">(道頓堀)</span>',
+  217: 'in the Moon, Gion <span class="jp">(イン・ザ・ムーン)</span>',
+  218: 'in the Moon, Gion <span class="jp">(イン・ザ・ムーン)</span>',
+  219: 'in the Moon, Gion <span class="jp">(イン・ザ・ムーン)</span>',
+  220: 'in the Moon, Gion <span class="jp">(イン・ザ・ムーン)</span>',
+  221: 'Kamo River <span class="jp">(鴨川)</span>',
+  222: 'Kiyomizu-dera <span class="jp">(清水寺)</span>',
+  223: 'Kiyomizu-dera <span class="jp">(清水寺)</span>',
+  224: 'Kiyomizu-dera <span class="jp">(清水寺)</span>',
+  225: 'Blue Bottle Coffee, Kiyamachi <span class="jp">(ブルーボトルコーヒー)</span>',
+  226: 'Streets of Nakagyō <span class="jp">(中京区の街並み)</span>',
+  227: 'Mount Fuji <span class="jp">(富士山)</span>'
+
+
+  };
+
+  // ── Build city lookup ──
+  const cityMap={};
+  for(let i=1;i<=TOTAL;i++){
+    for(const entry of CITY_RANGES){
+      for(const r of entry.ranges){
+        if(i>=r[0]&&i<=r[1]) cityMap[i]=entry.city;
+      }
+    }
+  }
+
+  const cityOrder=[];
+  const seen={};
+  for(let i=1;i<=TOTAL;i++){
+    const c=cityMap[i];
+    if(c&&!seen[c]){cityOrder.push(c);seen[c]=true}
+  }
+
+  const cityCounts={All:TOTAL};
+  for(let i=1;i<=TOTAL;i++){
+    const c=cityMap[i];
+    if(c) cityCounts[c]=(cityCounts[c]||0)+1;
+  }
+
+  // ── DOM refs ──
+  const gallery=document.getElementById('gallery');
+  const lightbox=document.getElementById('lightbox');
+  const lbImg=lightbox.querySelector('img');
+  const lbCity=lightbox.querySelector('.lightbox-city');
+  const lbPlace=lightbox.querySelector('.lightbox-place');
+  const lbCounter=lightbox.querySelector('.lightbox-counter');
+  const nowShowingEl=document.getElementById('nowShowing');
+  const menuBtn=document.getElementById('menuBtn');
+  const menuDropdown=document.getElementById('menuDropdown');
+  const menuOverlay=document.getElementById('menuOverlay');
+
+  let current=0;
+  let activeFilter='All';
+  const items=[];
+  let filtered=[];
+  let menuOpen=false;
+
+  // ── Build hamburger menu ──
+  const allCities=['All',...cityOrder];
+  allCities.forEach(function(city,i){
+    if(i===1){
+      const div=document.createElement('div');
+      div.className='menu-divider';
+      menuDropdown.appendChild(div);
+    }
+    const btn=document.createElement('button');
+    btn.className='menu-item'+(city==='All'?' active':'');
+    btn.dataset.city=city;
+    btn.innerHTML=city+'<span class="menu-item-count">'+(cityCounts[city]||0)+'</span>';
+    btn.addEventListener('click',function(){
+      setFilter(city);
+      closeMenu();
+    });
+    menuDropdown.appendChild(btn);
+  });
+
+  function openMenu(){
+    menuOpen=true;
+    menuDropdown.classList.add('open');
+    menuOverlay.classList.add('open');
+  }
+  function closeMenu(){
+    menuOpen=false;
+    menuDropdown.classList.remove('open');
+    menuOverlay.classList.remove('open');
+  }
+
+  menuBtn.addEventListener('click',function(e){
+    e.stopPropagation();
+    if(menuOpen) closeMenu(); else openMenu();
+  });
+  menuOverlay.addEventListener('click',closeMenu);
+
+  // ── Filter logic ──
+  function getTopVisibleIndex(){
+    // Find which filtered photo is closest to just below the header
+    var headerH=document.querySelector('header').offsetHeight;
+    var scanY=headerH+20;
+    var bestIdx=-1, bestDist=Infinity;
+    for(var fi=0;fi<filtered.length;fi++){
+      var rect=items[filtered[fi]].el.getBoundingClientRect();
+      var dist=Math.abs(rect.top-scanY);
+      if(rect.bottom>headerH&&dist<bestDist){
+        bestDist=dist;
+        bestIdx=filtered[fi];
+      }
+    }
+    return bestIdx;
+  }
+
+  function setFilter(city){
+    // Capture which photo is currently at the top before changing filter
+    var anchorIdx=getTopVisibleIndex();
+
+    activeFilter=city;
+    menuDropdown.querySelectorAll('.menu-item').forEach(function(m){
+      m.classList.toggle('active',m.dataset.city===city);
+    });
+    updateFiltered();
+    layout();
+    lastShownKey=''; // force update since filter changed
+
+    // Try to scroll to the anchor photo's new position
+    var scrollTarget=-1;
+    if(anchorIdx>=0){
+      if(city==='All'){
+        // All always contains every photo
+        scrollTarget=anchorIdx;
+      }else{
+        // Check if the anchor photo is in the new filtered set
+        var anchorNum=anchorIdx+1;
+        if(cityMap[anchorNum]===city){
+          scrollTarget=anchorIdx;
+        }
+      }
+    }
+
+    if(scrollTarget>=0){
+      gallery.classList.add('settling');
+      var headerH=document.querySelector('header').offsetHeight;
+      var el=items[scrollTarget].el;
+      var galleryTop=gallery.getBoundingClientRect().top+window.scrollY;
+      var photoTop=parseFloat(el.style.top)+galleryTop;
+      window.scrollTo({top:photoTop-headerH-10,behavior:'instant'});
+      requestAnimationFrame(function(){
+        gallery.classList.remove('settling');
+      });
+    }else{
+      // Anchor photo not in new filter — deeper settle signals context change
+      gallery.classList.add('settling-deep');
+      window.scrollTo({top:0,behavior:'instant'});
+      requestAnimationFrame(function(){
+        gallery.classList.remove('settling-deep');
+      });
+    }
+
+    updateNowShowing();
+  }
+
+  function updateFiltered(){
+    filtered=[];
+    items.forEach(function(item,idx){
+      const photoNum=idx+1;
+      const match=activeFilter==='All'||cityMap[photoNum]===activeFilter;
+      item.el.classList.toggle('filtered-out',!match);
+      if(match) filtered.push(idx);
+    });
+  }
+
+  // ── "Now showing" label ──
+  let lastShownKey='';
+  function nowShowingHTML(city){
+    var html='<span class="now-showing-label">Now showing \u00b7 </span><span class="now-showing-city">'+city+'</span>';
+    if(activeFilter!=='All') html+=' <span class="now-showing-filtered">\u00b7 Filtered</span>';
+    return html;
+  }
+  function setNowShowing(city){
+    var key=city+'|'+activeFilter;
+    if(key===lastShownKey) return;
+    lastShownKey=key;
+    nowShowingEl.classList.add('hidden');
+    setTimeout(function(){
+      nowShowingEl.innerHTML=nowShowingHTML(city);
+      nowShowingEl.classList.remove('hidden');
+    },200);
+  }
+  function setNowShowingImmediate(city){
+    var key=city+'|'+activeFilter;
+    if(key===lastShownKey&&nowShowingEl.innerHTML) return;
+    lastShownKey=key;
+    nowShowingEl.innerHTML=nowShowingHTML(city);
+    nowShowingEl.classList.remove('hidden');
+  }
+
+  function updateNowShowing(){
+    // When filtered to a city, show that city immediately
+    if(activeFilter!=='All'){
+      setNowShowingImmediate(activeFilter);
+      return;
+    }
+    // In "All" mode, detect from scroll position
+    const headerH=document.querySelector('header').offsetHeight;
+    const scanY=headerH+50;
+    let bestCity='';
+    let bestDist=Infinity;
+
+    for(let fi=0;fi<filtered.length;fi++){
+      const item=items[filtered[fi]];
+      const rect=item.el.getBoundingClientRect();
+      const dist=Math.abs(rect.top-scanY);
+      if(rect.bottom>headerH&&dist<bestDist){
+        bestDist=dist;
+        bestCity=cityMap[filtered[fi]+1]||'';
+      }
+    }
+
+    if(bestCity){
+      if(!nowShowingEl.innerHTML) setNowShowingImmediate(bestCity);
+      else setNowShowing(bestCity);
+    }
+  }
+
+  // ── Build gallery items ──
+  for(let i=1;i<=TOTAL;i++){
+    const num=String(i).padStart(3,'0');
+    const src='photos/Japan_Spring-2025_'+num+'.jpg';
+    const div=document.createElement('div');
+    div.className='gallery-item';
+    div.dataset.index=i-1;
+    div.dataset.photoNum=i;
+    const img=document.createElement('img');
+    img.alt='Japan Spring 2025 - '+(cityMap[i]||'Photo')+' '+i;
+    img.src=src;
+    div.appendChild(img);
+    gallery.appendChild(div);
+    items.push({el:div,img:img,ratio:0,loaded:false});
+  }
+
+  updateFiltered();
+
+  // ── Masonry layout ──
+  function layout(){
+    const cols=getColCount();
+    const containerW=gallery.clientWidth;
+    const colW=(containerW-(cols-1)*GAP)/cols;
+    const colHeights=new Array(cols).fill(0);
+
+    for(let fi=0;fi<filtered.length;fi++){
+      const item=items[filtered[fi]];
+      let minH=colHeights[0],minCol=0;
+      for(let c=1;c<cols;c++){
+        if(colHeights[c]<minH){minH=colHeights[c];minCol=c}
+      }
+      const x=minCol*(colW+GAP);
+      const y=colHeights[minCol];
+      const h=item.ratio?colW/item.ratio:colW;
+
+      item.el.style.left=x+'px';
+      item.el.style.top=y+'px';
+      item.el.style.width=colW+'px';
+
+      colHeights[minCol]=y+h+GAP;
+    }
+    gallery.style.height=(filtered.length?Math.max(...colHeights):0)+'px';
+  }
+
+  function getColCount(){
+    const w=gallery.clientWidth;
+    if(w<=480)return 1;
+    if(w<=800)return 2;
+    if(w<=1200)return 3;
+    return 4;
+  }
+
+  // ── Image load tracking ──
+  items.forEach(function(item){
+    if(item.img.complete&&item.img.naturalWidth){
+      item.ratio=item.img.naturalWidth/item.img.naturalHeight;
+      item.loaded=true;
+      item.el.classList.add('loaded');
+    }else{
+      item.img.onload=function(){
+        item.ratio=item.img.naturalWidth/item.img.naturalHeight;
+        item.loaded=true;
+        item.el.classList.add('loaded');
+        layout();
+      };
+    }
+  });
+
+  layout();
+  updateNowShowing();
+
+  let resizeTimer;
+  window.addEventListener('resize',function(){
+    clearTimeout(resizeTimer);
+    resizeTimer=setTimeout(layout,100);
+  });
+
+  let scrollTicking=false;
+  window.addEventListener('scroll',function(){
+    if(!scrollTicking){
+      scrollTicking=true;
+      requestAnimationFrame(function(){
+        updateNowShowing();
+        scrollTicking=false;
+      });
+    }
+  },{passive:true});
+
+  // ── Lightbox ──
+  gallery.addEventListener('click',function(e){
+    const item=e.target.closest('.gallery-item');
+    if(!item||item.classList.contains('filtered-out'))return;
+    const idx=parseInt(item.dataset.index,10);
+    current=filtered.indexOf(idx);
+    if(current===-1)return;
+    openLightbox();
+  });
+
+  function photoSrc(idx){
+    return 'photos/Japan_Spring-2025_'+String(idx+1).padStart(3,'0')+'.jpg';
+  }
+
+  function openLightbox(){
+    const realIdx=filtered[current];
+    const photoNum=realIdx+1;
+    lightbox.classList.add('loading');
+    lbImg.onload=function(){lightbox.classList.remove('loading')};
+    lbImg.src=photoSrc(realIdx);
+    lbImg.alt='Japan Spring 2025 - Photo '+photoNum;
+
+    const city=cityMap[photoNum]||'';
+    const place=CAPTIONS[photoNum]||'';
+    if(place){
+      lbCity.textContent=city+' \u2014 ';
+      lbPlace.innerHTML=place;
+    }else{
+      lbCity.textContent=city;
+      lbPlace.textContent='';
+    }
+
+    lbCounter.innerHTML=(current+1)+' <span class="lightbox-sep">\u00b7</span> '+filtered.length;
+
+    // Hide nav arrows at boundaries
+    lightbox.querySelector('.lightbox-prev').style.display=current<=0?'none':'';
+    lightbox.querySelector('.lightbox-next').style.display=current>=filtered.length-1?'none':'';
+
+    lightbox.classList.add('active');
+    document.body.style.overflow='hidden';
+  }
+
+  function closeLightbox(){
+    lightbox.classList.remove('active','loading');
+    document.body.style.overflow='';
+    lbImg.src='';
+    // Scroll grid to the photo the user was viewing
+    if(current>=0&&current<filtered.length){
+      var el=items[filtered[current]].el;
+      var headerH=document.querySelector('header').offsetHeight;
+      var galleryTop=gallery.getBoundingClientRect().top+window.scrollY;
+      var photoTop=parseFloat(el.style.top)+galleryTop;
+      window.scrollTo({top:photoTop-headerH-10,behavior:'instant'});
+    }
+  }
+
+  function navigate(dir){
+    var next=current+dir;
+    if(next<0||next>=filtered.length) return;
+    current=next;
+    openLightbox();
+  }
+
+  lightbox.querySelector('.lightbox-close').addEventListener('click',closeLightbox);
+  lightbox.querySelector('.lightbox-prev').addEventListener('click',function(){navigate(-1)});
+  lightbox.querySelector('.lightbox-next').addEventListener('click',function(){navigate(1)});
+
+  lightbox.addEventListener('click',function(e){
+    if(e.target===lightbox)closeLightbox();
+  });
+
+  document.addEventListener('keydown',function(e){
+    if(!lightbox.classList.contains('active'))return;
+    if(e.key==='Escape')closeLightbox();
+    else if(e.key==='ArrowLeft')navigate(-1);
+    else if(e.key==='ArrowRight')navigate(1);
+  });
+
+  let touchStartX=0;
+  lightbox.addEventListener('touchstart',function(e){
+    touchStartX=e.changedTouches[0].screenX;
+  },{passive:true});
+  lightbox.addEventListener('touchend',function(e){
+    const diff=e.changedTouches[0].screenX-touchStartX;
+    if(Math.abs(diff)>50){
+      navigate(diff>0?-1:1);
+    }
+  },{passive:true});
+})();
+</script>
+</body>
+</html>
