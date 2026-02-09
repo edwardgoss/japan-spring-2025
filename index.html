@@ -427,46 +427,22 @@
   /* ── Compact caption: mobile landscape, short viewport ── */
   @media(max-height:500px) and (orientation:landscape) and (max-width:1024px){
     .lightbox-caption.compact{
-      padding:8px 16px 6px;
-      cursor:pointer;
-      display:flex;
-      align-items:baseline;
-      justify-content:center;
-      gap:0;
-      flex-wrap:nowrap;
+      padding:6px 16px 5px;
     }
     .lightbox-caption.compact .lightbox-location{
-      white-space:nowrap;
+      font-size:.65rem;
+      line-height:1.35;
+      display:-webkit-box;
+      -webkit-line-clamp:2;
+      -webkit-box-orient:vertical;
       overflow:hidden;
-      text-overflow:ellipsis;
-      min-width:0;
     }
     .lightbox-caption.compact .lightbox-place .jp{
-      display:none;
+      font-size:.75em;
     }
     .lightbox-caption.compact .lightbox-counter{
-      margin-top:0;
-      margin-left:8px;
-      flex-shrink:0;
-      white-space:nowrap;
-    }
-    /* Expanded state */
-    .lightbox-caption.compact.expanded{
-      display:block;
-      cursor:pointer;
-      padding:12px 16px 8px;
-    }
-    .lightbox-caption.compact.expanded .lightbox-location{
-      white-space:normal;
-      overflow:visible;
-      text-overflow:unset;
-    }
-    .lightbox-caption.compact.expanded .lightbox-place .jp{
-      display:inline;
-    }
-    .lightbox-caption.compact.expanded .lightbox-counter{
-      margin-left:0;
-      margin-top:4px;
+      font-size:.55rem;
+      margin-top:2px;
     }
   }
 </style>
@@ -1222,7 +1198,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     if(current-1>=0) new Image().src=photoSrc(filtered[current-1]);
 
     // Compact caption mode for mobile landscape
-    lbCaption.classList.remove('expanded');
     if(compactMQ.matches){
       lbCaption.classList.add('compact');
     }else{
@@ -1231,13 +1206,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   }
 
   var compactMQ=window.matchMedia('(max-height:500px) and (orientation:landscape) and (max-width:1024px)');
-
-  // Tap caption to expand/collapse in compact mode
-  lbCaption.addEventListener('click',function(e){
-    if(!lbCaption.classList.contains('compact')) return;
-    e.stopPropagation(); // Don't close lightbox
-    lbCaption.classList.toggle('expanded');
-  });
 
   function closeLightbox(){
     lightbox.classList.remove('active','loading');
@@ -1296,10 +1264,16 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   });
 
   let touchStartX=0;
+  let touchIsMulti=false;
   lightbox.addEventListener('touchstart',function(e){
+    touchIsMulti=e.touches.length>1;
     touchStartX=e.changedTouches[0].screenX;
   },{passive:true});
+  lightbox.addEventListener('touchmove',function(e){
+    if(e.touches.length>1) touchIsMulti=true;
+  },{passive:true});
   lightbox.addEventListener('touchend',function(e){
+    if(touchIsMulti) return;
     const diff=e.changedTouches[0].screenX-touchStartX;
     if(Math.abs(diff)>50){
       navigate(diff>0?-1:1);
