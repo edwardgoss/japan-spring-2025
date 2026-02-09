@@ -108,6 +108,8 @@
     height:1.1em;
     letter-spacing:.02em;
     transition:opacity .25s ease;
+    will-change:opacity;
+    backface-visibility:hidden;
   }
   .now-showing.hidden{opacity:0}
   .now-showing-label{
@@ -1102,15 +1104,11 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     nowShowingInTransition = true;
     lastShownKey = key;
 
-    var done = false;
-    function finishFadeOut(){
-      if(done) return;
-      done = true;
+    function finishTransition(){
       if (nowShowingTimer) {
         clearTimeout(nowShowingTimer);
         nowShowingTimer = null;
       }
-      nowShowingEl.removeEventListener('transitionend', onEnd);
 
       nowShowingEl.innerHTML = nowShowingHTML(city);
       requestAnimationFrame(function(){
@@ -1131,22 +1129,16 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       });
     }
 
-    function onEnd(e){
-      if(e && e.propertyName !== 'opacity') return;
-      finishFadeOut();
-    }
-
     // If already hidden or empty (first paint), skip fade-out
     if (nowShowingEl.classList.contains('hidden') || !nowShowingEl.innerHTML) {
-      finishFadeOut();
+      finishTransition();
       return;
     }
 
-    // Start fade-out on its own frame so Safari applies the opacity change cleanly
+    // Fade out on its own frame; swap after the fade duration
     requestAnimationFrame(function(){
       nowShowingEl.classList.add('hidden');
-      nowShowingEl.addEventListener('transitionend', onEnd);
-      nowShowingTimer = setTimeout(finishFadeOut, NOW_SHOWING_FADE_MS + 60);
+      nowShowingTimer = setTimeout(finishTransition, NOW_SHOWING_FADE_MS);
     });
   }
 
