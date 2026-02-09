@@ -301,6 +301,7 @@
     transition:opacity .25s ease;
     width:var(--lb-vw,100vw);
     height:var(--lb-vh,100vh);
+    transform:translate3d(var(--lb-offset-x,0px),var(--lb-offset-y,0px),0);
   }
   .lightbox.active{
     display:flex;
@@ -868,38 +869,19 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const lbCounter=lightbox.querySelector('.lightbox-counter');
   let lightboxOpenScrollY = 0;
   const viewportMeta=document.querySelector('meta[name="viewport"]');
-  let viewportMetaOriginal = viewportMeta ? viewportMeta.getAttribute('content') : '';
-  let viewportMetaLocked = false;
-
-  function lockViewportScale(){
-    if(!viewportMeta || viewportMetaLocked) return;
-    viewportMetaOriginal = viewportMeta.getAttribute('content') || '';
-    viewportMeta.setAttribute('content','width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
-    viewportMetaLocked = true;
-  }
-
-  function unlockViewportScale(){
-    if(!viewportMeta || !viewportMetaLocked) return;
-    viewportMeta.setAttribute('content',viewportMetaOriginal || 'width=device-width, initial-scale=1.0');
-    viewportMetaLocked = false;
-  }
-
-  function forceViewportReset(){
-    if(!viewportMeta || !window.visualViewport) return;
-    var scale=window.visualViewport.scale || 1;
-    if(Math.abs(scale-1) < 0.01) return;
-    var original=viewportMetaOriginal || viewportMeta.getAttribute('content') || 'width=device-width, initial-scale=1.0';
-    viewportMeta.setAttribute('content','width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
-    setTimeout(function(){
-      viewportMeta.setAttribute('content',original);
-    },300);
-  }
 
   function updateLightboxMetrics(){
     if(!lightbox.classList.contains('active')) return;
     var vp=window.visualViewport?{w:window.visualViewport.width,h:window.visualViewport.height}:{w:window.innerWidth,h:window.innerHeight};
     lightbox.style.setProperty('--lb-vw',vp.w+'px');
     lightbox.style.setProperty('--lb-vh',vp.h+'px');
+    if(window.visualViewport){
+      lightbox.style.setProperty('--lb-offset-x',window.visualViewport.offsetLeft+'px');
+      lightbox.style.setProperty('--lb-offset-y',window.visualViewport.offsetTop+'px');
+    }else{
+      lightbox.style.setProperty('--lb-offset-x','0px');
+      lightbox.style.setProperty('--lb-offset-y','0px');
+    }
     var cap=lightbox.querySelector('.lightbox-caption');
     var capH=cap?cap.offsetHeight:0;
     lightbox.style.setProperty('--lb-caption-h',capH+'px');
@@ -1472,7 +1454,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     lightbox.classList.add('active');
     lightboxOpenScrollY = window.scrollY || 0;
     document.body.style.overflow='hidden';
-    lockViewportScale();
 
     // Re-check compact caption state on open
     if(window._updateCompactCaption) window._updateCompactCaption();
@@ -1488,11 +1469,11 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     lightbox.classList.remove('active','loading');
     document.body.style.overflow='';
     lbImg.src='';
-    unlockViewportScale();
-    forceViewportReset();
     lightbox.style.removeProperty('--lb-vw');
     lightbox.style.removeProperty('--lb-vh');
     lightbox.style.removeProperty('--lb-caption-h');
+    lightbox.style.removeProperty('--lb-offset-x');
+    lightbox.style.removeProperty('--lb-offset-y');
     // Re-layout after viewport settles (iPad Safari can report stale sizes)
     if(pendingLayoutAfterLightbox){
       pendingLayoutAfterLightbox=false;
@@ -1533,6 +1514,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   });
   if(window.visualViewport){
     window.visualViewport.addEventListener('resize',function(){
+      updateLightboxMetrics();
+    });
+    window.visualViewport.addEventListener('scroll',function(){
       updateLightboxMetrics();
     });
   }
@@ -1587,18 +1571,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     }
   },{passive:true});
 
-  // Prevent pinch-zoom from breaking lightbox positioning
-  function preventGesture(e){
-    if(lightbox.classList.contains('active')) e.preventDefault();
-  }
-  document.addEventListener('gesturestart',preventGesture,{passive:false});
-  document.addEventListener('gesturechange',preventGesture,{passive:false});
-  document.addEventListener('gestureend',preventGesture,{passive:false});
-  document.addEventListener('touchmove',function(e){
-    if(lightbox.classList.contains('active')&&e.touches&&e.touches.length>1){
-      e.preventDefault();
-    }
-  },{passive:false});
 })();
 </script>
 </body>
