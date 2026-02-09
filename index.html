@@ -867,6 +867,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     layout();
     updateNoResults();
     lastShownKey='';
+    forceNowShowingFadeOnce=true;
     updateNowShowing();
     updateClearAllBtn();
     closeMenu();
@@ -1069,6 +1070,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
   // ── "Now showing" label ──
   let lastShownKey='';
+  let forceNowShowingFadeOnce=false;
   function nowShowingHTML(city){
     var html='<span class="now-showing-label">Now showing \u00b7 </span><span class="now-showing-city">'+city+'</span>';
     if(activeFilter!=='All') html+=' <span class="now-showing-filtered">\u00b7 Filtered</span>';
@@ -1100,8 +1102,13 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   function updateNowShowing(){
     // When filtered to a city, show that city immediately
     if(activeFilter!=='All'){
+      if(forceNowShowingFadeOnce){
+      forceNowShowingFadeOnce=false;
+      setNowShowing(activeFilter);
+    } else {
       setNowShowingImmediate(activeFilter);
-      return;
+    }
+    return;
     }
     // In "All" mode, detect from scroll position
     const headerH=document.querySelector('header').offsetHeight;
@@ -1119,9 +1126,15 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       }
     }
 
-    if(bestCity){
-      if(!nowShowingEl.innerHTML) setNowShowingImmediate(bestCity);
-      else setNowShowing(bestCity);
+    if (bestCity) {
+      if (forceNowShowingFadeOnce) {
+        forceNowShowingFadeOnce = false;
+        setNowShowing(bestCity);
+      } else if (!nowShowingEl.innerHTML) {
+        setNowShowingImmediate(bestCity);
+      } else {
+        setNowShowing(bestCity);
+      }
     }
   }
 
