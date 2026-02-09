@@ -1357,10 +1357,30 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   updateNowShowing();
 
   let resizeTimer;
+  let pendingLayoutAfterLightbox=false;
+  function scheduleLayoutAfterLightbox(){
+    clearTimeout(resizeTimer);
+    resizeTimer=setTimeout(layout,200);
+    setTimeout(layout,600);
+  }
   window.addEventListener('resize',function(){
+    if(lightbox.classList.contains('active')){
+      pendingLayoutAfterLightbox=true;
+      return;
+    }
     clearTimeout(resizeTimer);
     resizeTimer=setTimeout(layout,100);
   });
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize',function(){
+      if(lightbox.classList.contains('active')){
+        pendingLayoutAfterLightbox=true;
+        return;
+      }
+      clearTimeout(resizeTimer);
+      resizeTimer=setTimeout(layout,100);
+    });
+  }
 
   // ── Scroll to top button ──
   const scrollTopBtn=document.getElementById('scrollTop');
@@ -1453,9 +1473,14 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     lightbox.style.removeProperty('--lb-vw');
     lightbox.style.removeProperty('--lb-vh');
     lightbox.style.removeProperty('--lb-caption-h');
-    // Re-layout in case viewport changed (e.g. zoom) while lightbox was open
-    layout();
-    // Safari iPad rotation can leave the page scaled; nudge scroll to reset.
+    // Re-layout after viewport settles (iPad Safari can report stale sizes)
+    if(pendingLayoutAfterLightbox){
+      pendingLayoutAfterLightbox=false;
+      scheduleLayoutAfterLightbox();
+    }else{
+      scheduleLayoutAfterLightbox();
+    }
+    // Safari iPad rotation can leave the page scaled; nudge scroll after reflow.
     requestAnimationFrame(function(){
       window.scrollTo({top:lightboxOpenScrollY+1,behavior:'instant'});
       window.scrollTo({top:lightboxOpenScrollY,behavior:'instant'});
