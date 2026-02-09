@@ -438,7 +438,19 @@
   }
 
   /* ── Compact caption: mobile landscape, short viewport (JS-driven) ── */
+  html.compact-caption .lightbox{
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+  }
+  html.compact-caption .lightbox img{
+    max-width:96vw;
+    max-height:calc(100vh - 96px);
+  }
   html.compact-caption .lightbox-caption{
+    position:static;
+    width:100%;
+    margin-top:8px;
     padding:4px 14px 3px;
     background:rgba(0,0,0,.45);
   }
