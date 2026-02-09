@@ -867,6 +867,17 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     viewportMetaLocked = false;
   }
 
+  function forceViewportReset(){
+    if(!viewportMeta || !window.visualViewport) return;
+    var scale=window.visualViewport.scale || 1;
+    if(Math.abs(scale-1) < 0.01) return;
+    var original=viewportMetaOriginal || viewportMeta.getAttribute('content') || 'width=device-width, initial-scale=1.0';
+    viewportMeta.setAttribute('content','width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+    setTimeout(function(){
+      viewportMeta.setAttribute('content',original);
+    },300);
+  }
+
   function updateLightboxMetrics(){
     if(!lightbox.classList.contains('active')) return;
     var vp=window.visualViewport?{w:window.visualViewport.width,h:window.visualViewport.height}:{w:window.innerWidth,h:window.innerHeight};
@@ -1438,6 +1449,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     document.body.style.overflow='';
     lbImg.src='';
     unlockViewportScale();
+    forceViewportReset();
     lightbox.style.removeProperty('--lb-vw');
     lightbox.style.removeProperty('--lb-vh');
     lightbox.style.removeProperty('--lb-caption-h');
