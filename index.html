@@ -493,12 +493,16 @@
   @media (hover: none) and (pointer: coarse) and (max-height: 500px){
     .lightbox img{
       max-width:98vw;
-      max-height:calc(var(--lb-vh, 100vh) - var(--lb-caption-h, 0px) - 20px);
+      max-height:calc(var(--lb-vh, 100vh) - var(--lb-caption-h, 0px) - var(--lb-top-pad, 0px) - 20px);
       margin-top:auto;
       margin-bottom:auto;
     }
     .lightbox-caption{
       margin-top:0;
+    }
+    .lightbox{
+      padding-top:var(--lb-top-pad, 0px);
+      box-sizing:border-box;
     }
   }
 
@@ -899,6 +903,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     var cap=lightbox.querySelector('.lightbox-caption');
     var capH=cap?cap.offsetHeight:0;
     lightbox.style.setProperty('--lb-caption-h',capH+'px');
+    var uiGap=window.visualViewport?Math.max(0,window.innerHeight-vp.h):0;
+    var topPad=uiGap>0?12:0;
+    lightbox.style.setProperty('--lb-top-pad',topPad+'px');
   }
   const nowShowingEl=document.getElementById('nowShowing');
   const menuBtn=document.getElementById('menuBtn');
@@ -1579,6 +1586,19 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       navigate(diff>0?-1:1);
     }
   },{passive:true});
+
+  // Prevent pinch-zoom from breaking lightbox positioning
+  function preventGesture(e){
+    if(lightbox.classList.contains('active')) e.preventDefault();
+  }
+  document.addEventListener('gesturestart',preventGesture,{passive:false});
+  document.addEventListener('gesturechange',preventGesture,{passive:false});
+  document.addEventListener('gestureend',preventGesture,{passive:false});
+  document.addEventListener('touchmove',function(e){
+    if(lightbox.classList.contains('active')&&e.touches&&e.touches.length>1){
+      e.preventDefault();
+    }
+  },{passive:false});
 })();
 </script>
 </body>
