@@ -72,7 +72,13 @@
     letter-spacing:.04em;
     line-height:1.3;
   }
-  .header-byline{
+  
+  /* Title is tappable, but should not look like a button */
+  #titleTap{
+    cursor:pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+.header-byline{
     font-weight:400;
     font-size:.7rem;
     opacity:.4;
@@ -157,6 +163,7 @@
     transition:background .15s;
     letter-spacing:.02em;
   }
+.menu-clear-all{margin-top:10px; font-size:0.9rem; opacity:0.9;}
   .menu-item:hover{
     background:var(--menu-hover);
   }
@@ -445,13 +452,19 @@
     font-size:.45rem;
     margin-top:1px;
   }
+
+  @media (max-width: 768px){
+    /* iOS Safari zoom prevention: inputs must be >=16px */
+    .menu-search input{font-size:16px;}
+  }
+
 </style>
 </head>
 <body>
 
 <header>
   <div class="header-top">
-    <h1>Japan Spring 2025 <span class="header-byline">&middot; Edward Goss</span></h1>
+    <h1 id="titleTap" aria-label="Scroll to top">Japan Spring 2025 <span class="header-byline">&middot; Edward Goss</span></h1>
     <button class="menu-btn" id="menuBtn" aria-label="Filter menu">&#9776;</button>
   </div>
   <div class="now-showing" id="nowShowing"></div>
@@ -835,12 +848,56 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   searchWrap.appendChild(searchHint);
   menuDropdown.appendChild(searchWrap);
 
+  // Clear filter & search (shown only when something is active)
+  const clearAllBtn=document.createElement('button');
+  clearAllBtn.type='button';
+  clearAllBtn.className='menu-item menu-clear-all';
+  clearAllBtn.textContent='Clear Filter & Search';
+  clearAllBtn.addEventListener('click',function(e){
+    e.stopPropagation();
+    activeFilter='All';
+    activeSearch='';
+    // reset UI
+    searchInput.value='';
+    updateSearchClear();
+    menuDropdown.querySelectorAll('.menu-item[data-city]').forEach(function(m){
+      m.classList.toggle('active',m.dataset.city==='All');
+    });
+    updateFiltered();
+    layout();
+    updateNoResults();
+    lastShownKey='';
+    updateNowShowing();
+    updateClearAllBtn();
+    closeMenu();
+    // return to top for a predictable reset
+    window.scrollTo({top:0,behavior:'smooth'});
+  });
+  menuDropdown.appendChild(clearAllBtn);
+
+  function updateClearAllBtn(){
+    const show = (activeFilter!=='All') || (activeSearch && activeSearch.length>0);
+    clearAllBtn.style.display = show ? '' : 'none';
+  }
+  updateClearAllBtn();
+
+
   function updateSearchClear(){
     searchClear.classList.toggle('visible',searchInput.value.length>0);
   }
 
   // Prevent menu close when interacting with search
   searchInput.addEventListener('click',function(e){e.stopPropagation()});
+
+  // On mobile: pressing Return should apply search, dismiss keyboard, and close menu
+  searchInput.addEventListener('keydown',function(e){
+    if(e.key==='Enter'){
+      e.preventDefault();
+      closeMenu();
+      searchInput.blur();
+    }
+  });
+
   searchClear.addEventListener('click',function(e){
     e.stopPropagation();
     clearSearch();
@@ -851,6 +908,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   searchInput.addEventListener('input',function(){
     activeSearch=normalize(searchInput.value.trim());
     updateSearchClear();
+    updateClearAllBtn();
     updateFiltered();
     layout();
     // Scroll to top when search changes
@@ -893,6 +951,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     menuOpen=false;
     menuDropdown.classList.remove('open');
     menuOverlay.classList.remove('open');
+    // Dismiss iOS keyboard / zoom if search is focused
+    if(document.activeElement===searchInput) searchInput.blur();
   }
 
   function clearSearch(){
@@ -904,6 +964,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     updateNoResults();
     lastShownKey='';
     updateNowShowing();
+    updateClearAllBtn();
   }
 
   menuBtn.addEventListener('click',function(e){
@@ -911,6 +972,16 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     if(menuOpen) closeMenu(); else openMenu();
   });
   menuOverlay.addEventListener('click',closeMenu);
+
+  // Header title: scroll to top (does not interfere with hamburger button)
+  var titleTap=document.getElementById('titleTap');
+  if(titleTap){
+    titleTap.addEventListener('click',function(e){
+      e.stopPropagation();
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+  }
+
 
   // ── Filter logic ──
   function getTopVisibleIndex(){
@@ -934,7 +1005,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     var anchorIdx=getTopVisibleIndex();
 
     activeFilter=city;
-    menuDropdown.querySelectorAll('.menu-item').forEach(function(m){
+    updateClearAllBtn();
+    menuDropdown.querySelectorAll('.menu-item[data-city]').forEach(function(m){
       m.classList.toggle('active',m.dataset.city===city);
     });
     updateFiltered();
