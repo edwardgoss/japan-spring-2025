@@ -849,6 +849,22 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const lbCity=lightbox.querySelector('.lightbox-city');
   const lbPlace=lightbox.querySelector('.lightbox-place');
   const lbCounter=lightbox.querySelector('.lightbox-counter');
+  const viewportMeta=document.querySelector('meta[name="viewport"]');
+  let viewportMetaOriginal = viewportMeta ? viewportMeta.getAttribute('content') : '';
+  let viewportMetaLocked = false;
+
+  function lockViewportScale(){
+    if(!viewportMeta || viewportMetaLocked) return;
+    viewportMetaOriginal = viewportMeta.getAttribute('content') || '';
+    viewportMeta.setAttribute('content','width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
+    viewportMetaLocked = true;
+  }
+
+  function unlockViewportScale(){
+    if(!viewportMeta || !viewportMetaLocked) return;
+    viewportMeta.setAttribute('content',viewportMetaOriginal || 'width=device-width, initial-scale=1.0');
+    viewportMetaLocked = false;
+  }
 
   function updateLightboxMetrics(){
     if(!lightbox.classList.contains('active')) return;
@@ -1403,6 +1419,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
     lightbox.classList.add('active');
     document.body.style.overflow='hidden';
+    lockViewportScale();
 
     // Re-check compact caption state on open
     if(window._updateCompactCaption) window._updateCompactCaption();
@@ -1418,6 +1435,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     lightbox.classList.remove('active','loading');
     document.body.style.overflow='';
     lbImg.src='';
+    unlockViewportScale();
     lightbox.style.removeProperty('--lb-vw');
     lightbox.style.removeProperty('--lb-vh');
     lightbox.style.removeProperty('--lb-caption-h');
