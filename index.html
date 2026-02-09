@@ -105,6 +105,7 @@
     position:relative;
     min-height:1.1em;
     margin-top:3px;
+    pointer-events:none;
   }
   .now-showing{
     font-size:.7rem;
@@ -115,8 +116,9 @@
     will-change:opacity;
     backface-visibility:hidden;
     -webkit-font-smoothing:antialiased;
+    pointer-events:none;
   }
-  .now-showing.hidden{opacity:0;pointer-events:none}
+  .now-showing.hidden{opacity:0}
   .now-showing-label{
     opacity:.6;
   }
