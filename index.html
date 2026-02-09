@@ -1213,7 +1213,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   // ── Build gallery items ──
   for(let i=1;i<=TOTAL;i++){
     const num=String(i).padStart(3,'0');
-    const src='photos/Japan_Spring-2025_'+num+'.jpg';
+    const src='grid_photos/Japan_Spring-2025_'+num+'.jpg';
     const div=document.createElement('div');
     div.className='gallery-item';
     div.dataset.index=i-1;
@@ -1368,8 +1368,11 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     openLightbox();
   });
 
+  function thumbSrc(idx){
+    return 'grid_photos/Japan_Spring-2025_'+String(idx+1).padStart(3,'0')+'.jpg';
+  }
   function photoSrc(idx){
-    return 'photos/Japan_Spring-2025_'+String(idx+1).padStart(3,'0')+'.jpg';
+    return 'full_photos/Japan_Spring-2025_'+String(idx+1).padStart(3,'0')+'.jpg';
   }
 
   function openLightbox(){
@@ -1407,7 +1410,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     // Measure caption height so image fits above it
     requestAnimationFrame(updateCaptionHeight);
 
-    // Preload adjacent images for snappy navigation
+    // Preload adjacent full-res images for snappy navigation
     if(current+1<filtered.length) new Image().src=photoSrc(filtered[current+1]);
     if(current-1>=0) new Image().src=photoSrc(filtered[current-1]);
 
