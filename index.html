@@ -101,17 +101,22 @@
   .menu-btn:hover{opacity:.8}
 
   /* Now showing label */
+  .now-showing-container{
+    position:relative;
+    min-height:1.1em;
+    margin-top:3px;
+  }
   .now-showing{
     font-size:.7rem;
     color:var(--text-secondary);
-    margin-top:3px;
-    height:1.1em;
     letter-spacing:.02em;
-    transition:opacity .25s ease;
+    transition:opacity .2s ease;
+    transform:translateZ(0);
     will-change:opacity;
     backface-visibility:hidden;
+    -webkit-font-smoothing:antialiased;
   }
-  .now-showing.hidden{opacity:0}
+  .now-showing.hidden{opacity:0;pointer-events:none}
   .now-showing-label{
     opacity:.6;
   }
@@ -428,6 +433,7 @@
     header{padding:10px 16px 8px}
     header h1{font-size:1.1rem}
     .header-byline{font-size:.6rem}
+    .now-showing-container{min-height:1em}
     .now-showing{font-size:.6rem}
     .menu-btn{font-size:1.1rem}
     .menu-dropdown{right:16px;min-width:180px}
@@ -470,40 +476,39 @@
     margin-top:1px;
   }
 
-  /* ── Touch devices in landscape: stack photo above caption ── */
+  /* ── Touch devices: better layout without breaking zoom ── */
   @media (hover: none) and (pointer: coarse){
     .lightbox{
+      display:flex;
       flex-direction:column;
-      justify-content:center;
       align-items:center;
+      padding:var(--lb-top-pad, 12px) 0 0 0;
     }
     .lightbox img{
+      flex:0 0 auto;
       max-width:96vw;
-      max-height:calc(var(--lb-vh, 100vh) - var(--lb-caption-h, 0px) - 24px);
+      max-height:calc(var(--lb-vh, 100vh) - var(--lb-caption-h, 0px) - var(--lb-top-pad, 12px) - 12px);
+      margin-top:auto;
+      touch-action:pan-x pan-y pinch-zoom;
     }
     .lightbox-caption{
       position:static;
+      flex:0 0 auto;
       width:100%;
-      margin-top:8px;
+      margin-top:auto;
+      margin-bottom:0;
       padding:6px 16px 6px;
       background:rgba(0,0,0,.45);
     }
   }
 
-  /* iPhone landscape: add top breathing room */
+  /* iPhone landscape: adjust spacing for browser bars */
   @media (hover: none) and (pointer: coarse) and (max-height: 500px){
-    .lightbox img{
-      max-width:98vw;
-      max-height:calc(var(--lb-vh, 100vh) - var(--lb-caption-h, 0px) - var(--lb-top-pad, 0px) - 20px);
-      margin-top:auto;
-      margin-bottom:auto;
-    }
-    .lightbox-caption{
-      margin-top:0;
-    }
     .lightbox{
-      padding-top:var(--lb-top-pad, 0px);
-      box-sizing:border-box;
+      padding-top:var(--lb-top-pad, 20px);
+    }
+    .lightbox img{
+      max-height:calc(var(--lb-vh, 100vh) - var(--lb-caption-h, 0px) - var(--lb-top-pad, 20px) - 8px);
     }
   }
 
@@ -521,7 +526,9 @@
     <h1 id="titleTap" aria-label="Scroll to top">Japan Spring 2025 <span class="header-byline">&middot; Edward Goss</span></h1>
     <button class="menu-btn" id="menuBtn" aria-label="Filter menu">&#9776;</button>
   </div>
-  <div class="now-showing" id="nowShowing"></div>
+  <div class="now-showing-container">
+    <div class="now-showing" id="nowShowing"></div>
+  </div>
   <div class="menu-dropdown" id="menuDropdown"></div>
 </header>
 <div class="menu-overlay" id="menuOverlay"></div>
@@ -885,8 +892,10 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     var cap=lightbox.querySelector('.lightbox-caption');
     var capH=cap?cap.offsetHeight:0;
     lightbox.style.setProperty('--lb-caption-h',capH+'px');
+    // Calculate top padding based on browser UI visibility
     var uiGap=window.visualViewport?Math.max(0,window.innerHeight-vp.h):0;
-    var topPad=uiGap>0?12:0;
+    var isLandscape=vp.w>vp.h;
+    var topPad=uiGap>20?Math.min(uiGap*0.5,40):(isLandscape?20:12);
     lightbox.style.setProperty('--lb-top-pad',topPad+'px');
   }
   const nowShowingEl=document.getElementById('nowShowing');
@@ -1158,7 +1167,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   let nowShowingInTransition = false;
   let pendingNowShowingKey = '';
   let pendingNowShowingCity = '';
-  const NOW_SHOWING_FADE_MS = 250; // keep in sync with CSS
+  const NOW_SHOWING_FADE_MS = 200; // keep in sync with CSS
 
   function applyNowShowingImmediate(city, key){
     lastShownKey = key;
