@@ -849,6 +849,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const lbCity=lightbox.querySelector('.lightbox-city');
   const lbPlace=lightbox.querySelector('.lightbox-place');
   const lbCounter=lightbox.querySelector('.lightbox-counter');
+  let lightboxOpenScrollY = 0;
   const viewportMeta=document.querySelector('meta[name="viewport"]');
   let viewportMetaOriginal = viewportMeta ? viewportMeta.getAttribute('content') : '';
   let viewportMetaLocked = false;
@@ -1418,6 +1419,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     lightbox.querySelector('.lightbox-next').style.display=current>=filtered.length-1?'none':'';
 
     lightbox.classList.add('active');
+    lightboxOpenScrollY = window.scrollY || 0;
     document.body.style.overflow='hidden';
     lockViewportScale();
 
@@ -1441,6 +1443,11 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     lightbox.style.removeProperty('--lb-caption-h');
     // Re-layout in case viewport changed (e.g. zoom) while lightbox was open
     layout();
+    // Safari iPad rotation can leave the page scaled; nudge scroll to reset.
+    requestAnimationFrame(function(){
+      window.scrollTo({top:lightboxOpenScrollY+1,behavior:'instant'});
+      window.scrollTo({top:lightboxOpenScrollY,behavior:'instant'});
+    });
     // Scroll to current photo if user navigated OR viewport changed (zoom)
     var didNavigate=current!==lightboxOpenCurrent;
     var viewportChanged=document.documentElement.clientWidth!==lightboxOpenWidth;
