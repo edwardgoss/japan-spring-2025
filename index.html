@@ -867,8 +867,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     layout();
     updateNoResults();
     lastShownKey='';
-    forceNowShowingFadeOnce=true;
-    updateNowShowing();
+    setNowShowing(cityMap[1] || 'Tokyo'); // force the fade to the default top city
     updateClearAllBtn();
     closeMenu();
     // return to top for a predictable reset
@@ -1041,7 +1040,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
         gallery.classList.remove('settling-deep');
       });
     }
-
+    forceNowShowingFadeOnce = true;
     updateNowShowing();
     updateNoResults();
   }
