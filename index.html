@@ -105,16 +105,14 @@
     font-size:.7rem;
     color:var(--text-secondary);
     margin-top:3px;
-    min-height:1.1em;
+    height:1.1em;
     letter-spacing:.02em;
     transition:opacity .15s ease-out;
     transform:translate3d(0,0,0);
     will-change:opacity;
-    backface-visibility:hidden;
     -webkit-font-smoothing:antialiased;
-    contain:layout style paint;
   }
-  .now-showing.hidden{opacity:0;visibility:hidden}
+  .now-showing.hidden{opacity:0}
   .now-showing-label{
     opacity:.6;
   }
@@ -302,9 +300,6 @@
     justify-content:center;
     opacity:0;
     transition:opacity .25s ease;
-    width:var(--lb-vw,100vw);
-    height:var(--lb-vh,100vh);
-    transform:translate3d(var(--lb-offset-x,0px),var(--lb-offset-y,0px),0);
   }
   .lightbox.active{
     display:flex;
@@ -431,7 +426,7 @@
     header{padding:10px 16px 8px}
     header h1{font-size:1.1rem}
     .header-byline{font-size:.6rem}
-    .now-showing{font-size:.6rem;min-height:1em}
+    .now-showing{font-size:.6rem;height:1em}
     .menu-btn{font-size:1.1rem}
     .menu-dropdown{right:16px;min-width:180px}
     .menu-item{padding:8px 14px;font-size:.7rem}
@@ -444,19 +439,7 @@
   }
 
   /* ── Compact caption: mobile landscape, short viewport (JS-driven) ── */
-  html.compact-caption .lightbox{
-    flex-direction:column;
-    justify-content:center;
-    align-items:center;
-  }
-  html.compact-caption .lightbox img{
-    max-width:96vw;
-    max-height:calc(100vh - 96px);
-  }
   html.compact-caption .lightbox-caption{
-    position:static;
-    width:100%;
-    margin-top:8px;
     padding:4px 14px 3px;
     background:rgba(0,0,0,.45);
   }
@@ -471,43 +454,6 @@
   html.compact-caption .lightbox-counter{
     font-size:.45rem;
     margin-top:1px;
-  }
-
-  /* ── Touch devices: better layout without breaking zoom ── */
-  @media (hover: none) and (pointer: coarse){
-    .lightbox.active{
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:space-between;
-      padding:var(--lb-top-pad, 12px) 0 0 0;
-      box-sizing:border-box;
-    }
-    .lightbox.active img{
-      flex:0 1 auto;
-      max-width:96vw;
-      max-height:calc(var(--lb-vh, 100vh) - var(--lb-caption-h, 0px) - var(--lb-top-pad, 12px) - 12px);
-      object-fit:contain;
-      touch-action:pan-x pan-y pinch-zoom;
-    }
-    .lightbox.active .lightbox-caption{
-      position:static;
-      flex:0 0 auto;
-      width:100%;
-      padding:6px 16px 6px;
-      background:rgba(0,0,0,.45);
-    }
-  }
-
-  /* iPhone landscape: adjust spacing for browser bars */
-  @media (hover: none) and (pointer: coarse) and (max-height: 500px){
-    .lightbox.active{
-      padding-top:var(--lb-top-pad, 20px);
-      padding-bottom:0;
-    }
-    .lightbox.active img{
-      max-height:calc(var(--lb-vh, 100vh) - var(--lb-caption-h, 0px) - var(--lb-top-pad, 20px) - 12px);
-    }
   }
 
   @media (max-width: 768px){
@@ -870,30 +816,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const lbCity=lightbox.querySelector('.lightbox-city');
   const lbPlace=lightbox.querySelector('.lightbox-place');
   const lbCounter=lightbox.querySelector('.lightbox-counter');
-  let lightboxOpenScrollY = 0;
-  const viewportMeta=document.querySelector('meta[name="viewport"]');
 
-  function updateLightboxMetrics(){
-    if(!lightbox.classList.contains('active')) return;
-    var vp=window.visualViewport?{w:window.visualViewport.width,h:window.visualViewport.height}:{w:window.innerWidth,h:window.innerHeight};
-    lightbox.style.setProperty('--lb-vw',vp.w+'px');
-    lightbox.style.setProperty('--lb-vh',vp.h+'px');
-    if(window.visualViewport){
-      lightbox.style.setProperty('--lb-offset-x',window.visualViewport.offsetLeft+'px');
-      lightbox.style.setProperty('--lb-offset-y',window.visualViewport.offsetTop+'px');
-    }else{
-      lightbox.style.setProperty('--lb-offset-x','0px');
-      lightbox.style.setProperty('--lb-offset-y','0px');
-    }
-    var cap=lightbox.querySelector('.lightbox-caption');
-    var capH=cap?cap.offsetHeight:0;
-    lightbox.style.setProperty('--lb-caption-h',capH+'px');
-    // Calculate top padding based on browser UI visibility
-    var uiGap=window.visualViewport?Math.max(0,window.innerHeight-vp.h):0;
-    var isLandscape=vp.w>vp.h;
-    var topPad=uiGap>20?Math.min(uiGap*0.5,40):(isLandscape?20:12);
-    lightbox.style.setProperty('--lb-top-pad',topPad+'px');
-  }
   const nowShowingEl=document.getElementById('nowShowing');
   const menuBtn=document.getElementById('menuBtn');
   const menuDropdown=document.getElementById('menuDropdown');
@@ -1121,7 +1044,17 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
         gallery.classList.remove('settling-deep');
       });
     }
-    updateNowShowing();
+    // For explicit filter changes, update now-showing immediately (no fade)
+    var nowCity = activeFilter !== 'All' ? activeFilter : '';
+    if (!nowCity) {
+      // Detect from scroll position for "All" filter
+      updateNowShowing();
+    } else {
+      var key = nowCity + '|' + activeFilter + '|' + activeSearch;
+      if (nowShowingTimer) { clearTimeout(nowShowingTimer); nowShowingTimer = null; }
+      nowShowingInTransition = false;
+      applyNowShowingImmediate(nowCity, key);
+    }
     updateNoResults();
   }
 
@@ -1435,7 +1368,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     lightbox.classList.add('loading');
     lbImg.onload=function(){
       lightbox.classList.remove('loading');
-      requestAnimationFrame(updateLightboxMetrics);
     };
     lbImg.src=photoSrc(realIdx);
     lbImg.alt='Japan Spring 2025 - Photo '+photoNum;
@@ -1457,12 +1389,10 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     lightbox.querySelector('.lightbox-next').style.display=current>=filtered.length-1?'none':'';
 
     lightbox.classList.add('active');
-    lightboxOpenScrollY = window.scrollY || 0;
     document.body.style.overflow='hidden';
 
     // Re-check compact caption state on open
     if(window._updateCompactCaption) window._updateCompactCaption();
-    requestAnimationFrame(updateLightboxMetrics);
 
     // Preload adjacent images for snappy navigation
     if(current+1<filtered.length) new Image().src=photoSrc(filtered[current+1]);
@@ -1474,23 +1404,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     lightbox.classList.remove('active','loading');
     document.body.style.overflow='';
     lbImg.src='';
-    lightbox.style.removeProperty('--lb-vw');
-    lightbox.style.removeProperty('--lb-vh');
-    lightbox.style.removeProperty('--lb-caption-h');
-    lightbox.style.removeProperty('--lb-offset-x');
-    lightbox.style.removeProperty('--lb-offset-y');
-    // Re-layout after viewport settles (iPad Safari can report stale sizes)
-    if(pendingLayoutAfterLightbox){
-      pendingLayoutAfterLightbox=false;
-      scheduleLayoutAfterLightbox();
-    }else{
-      scheduleLayoutAfterLightbox();
-    }
-    // Safari iPad rotation can leave the page scaled; nudge scroll after reflow.
-    requestAnimationFrame(function(){
-      window.scrollTo({top:lightboxOpenScrollY+1,behavior:'instant'});
-      window.scrollTo({top:lightboxOpenScrollY,behavior:'instant'});
-    });
+    // Re-layout in case viewport changed while lightbox was open
+    pendingLayoutAfterLightbox=false;
+    scheduleLayoutAfterLightbox();
     // Scroll to current photo if user navigated OR viewport changed (zoom)
     var didNavigate=current!==lightboxOpenCurrent;
     var viewportChanged=document.documentElement.clientWidth!==lightboxOpenWidth;
@@ -1514,23 +1430,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   lightbox.querySelector('.lightbox-prev').addEventListener('click',function(){navigate(-1)});
   lightbox.querySelector('.lightbox-next').addEventListener('click',function(){navigate(1)});
 
-  window.addEventListener('resize',function(){
-    updateLightboxMetrics();
-  });
-  if(window.visualViewport){
-    window.visualViewport.addEventListener('resize',function(){
-      updateLightboxMetrics();
-    });
-    window.visualViewport.addEventListener('scroll',function(){
-      updateLightboxMetrics();
-    });
-  }
-  window.addEventListener('orientationchange',function(){
-    if(!lightbox.classList.contains('active')) return;
-    updateLightboxMetrics();
-    setTimeout(updateLightboxMetrics,200);
-    setTimeout(updateLightboxMetrics,500);
-  });
 
   lightbox.addEventListener('click',function(e){
     if(e.target===lightbox)closeLightbox();
