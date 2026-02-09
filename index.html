@@ -300,6 +300,8 @@
     justify-content:center;
     opacity:0;
     transition:opacity .25s ease;
+    box-sizing:border-box;
+    padding-bottom:var(--caption-h,80px);
   }
   .lightbox.active{
     display:flex;
@@ -307,7 +309,8 @@
   }
   .lightbox img{
     max-width:92vw;
-    max-height:85vh;
+    max-height:calc(100vh - var(--caption-h,80px) - 24px);
+    max-height:calc(100dvh - var(--caption-h,80px) - 24px);
     object-fit:contain;
     border-radius:4px;
     user-select:none;
@@ -816,6 +819,13 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const lbCity=lightbox.querySelector('.lightbox-city');
   const lbPlace=lightbox.querySelector('.lightbox-place');
   const lbCounter=lightbox.querySelector('.lightbox-counter');
+  const lbCaption=lightbox.querySelector('.lightbox-caption');
+
+  function updateCaptionHeight(){
+    if(!lightbox.classList.contains('active')) return;
+    var h=lbCaption.offsetHeight||80;
+    lightbox.style.setProperty('--caption-h',h+'px');
+  }
 
   const nowShowingEl=document.getElementById('nowShowing');
   const menuBtn=document.getElementById('menuBtn');
@@ -1394,6 +1404,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     // Re-check compact caption state on open
     if(window._updateCompactCaption) window._updateCompactCaption();
 
+    // Measure caption height so image fits above it
+    requestAnimationFrame(updateCaptionHeight);
+
     // Preload adjacent images for snappy navigation
     if(current+1<filtered.length) new Image().src=photoSrc(filtered[current+1]);
     if(current-1>=0) new Image().src=photoSrc(filtered[current-1]);
@@ -1404,6 +1417,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     lightbox.classList.remove('active','loading');
     document.body.style.overflow='';
     lbImg.src='';
+    lightbox.style.removeProperty('--caption-h');
     // Re-layout in case viewport changed while lightbox was open
     pendingLayoutAfterLightbox=false;
     scheduleLayoutAfterLightbox();
@@ -1474,6 +1488,18 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       navigate(diff>0?-1:1);
     }
   },{passive:true});
+
+  // Keep caption height measurement up to date on resize/rotation
+  window.addEventListener('resize',updateCaptionHeight);
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize',updateCaptionHeight);
+  }
+  window.addEventListener('orientationchange',function(){
+    // iOS Safari needs time to settle after orientation change
+    updateCaptionHeight();
+    setTimeout(updateCaptionHeight,200);
+    setTimeout(updateCaptionHeight,500);
+  });
 
 })();
 </script>
