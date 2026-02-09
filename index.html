@@ -489,6 +489,17 @@
     }
   }
 
+  /* iPhone landscape: add top breathing room */
+  @media (hover: none) and (pointer: coarse) and (max-height: 500px){
+    .lightbox{
+      padding-top:12px;
+      box-sizing:border-box;
+    }
+    .lightbox img{
+      max-height:calc(var(--lb-vh, 100vh) - var(--lb-caption-h, 0px) - 36px);
+    }
+  }
+
   @media (max-width: 768px){
     /* iOS Safari zoom prevention: inputs must be >=16px */
     .menu-search input{font-size:16px;}
