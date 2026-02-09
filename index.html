@@ -474,20 +474,20 @@
 
   /* ── Touch devices: better layout without breaking zoom ── */
   @media (hover: none) and (pointer: coarse){
-    .lightbox{
+    .lightbox.active{
       display:flex;
       flex-direction:column;
       align-items:center;
       padding:var(--lb-top-pad, 12px) 0 0 0;
     }
-    .lightbox img{
+    .lightbox.active img{
       flex:0 0 auto;
       max-width:96vw;
       max-height:calc(var(--lb-vh, 100vh) - var(--lb-caption-h, 0px) - var(--lb-top-pad, 12px) - 12px);
       margin-top:auto;
       touch-action:pan-x pan-y pinch-zoom;
     }
-    .lightbox-caption{
+    .lightbox.active .lightbox-caption{
       position:static;
       flex:0 0 auto;
       width:100%;
@@ -500,10 +500,10 @@
 
   /* iPhone landscape: adjust spacing for browser bars */
   @media (hover: none) and (pointer: coarse) and (max-height: 500px){
-    .lightbox{
+    .lightbox.active{
       padding-top:var(--lb-top-pad, 20px);
     }
-    .lightbox img{
+    .lightbox.active img{
       max-height:calc(var(--lb-vh, 100vh) - var(--lb-caption-h, 0px) - var(--lb-top-pad, 20px) - 8px);
     }
   }
