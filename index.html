@@ -39,6 +39,10 @@
     }
   }
 
+  html{
+    -webkit-text-size-adjust:100%;
+    text-size-adjust:100%;
+  }
   body{
     background:var(--bg);
     color:var(--text);
@@ -480,17 +484,31 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
 // Compact caption detection (JS-driven for iOS Safari reliability)
 (function(){
+  function getViewport(){
+    // visualViewport is more reliable on iOS Safari (accounts for toolbar/keyboard)
+    if(window.visualViewport){
+      return{w:window.visualViewport.width,h:window.visualViewport.height};
+    }
+    return{w:window.innerWidth,h:window.innerHeight};
+  }
   function updateCompact(){
-    var compact=window.innerHeight<=500
-      &&window.innerWidth>window.innerHeight
-      &&window.innerWidth<=1024;
+    var vp=getViewport();
+    var compact=vp.h<=600&&vp.w>vp.h&&vp.w<=1024;
     document.documentElement.classList.toggle('compact-caption',compact);
   }
   window.addEventListener('resize',updateCompact);
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize',updateCompact);
+  }
   window.addEventListener('orientationchange',function(){
-    setTimeout(updateCompact,150);
+    // iOS Safari needs time to settle after orientation change
+    updateCompact();
+    setTimeout(updateCompact,200);
+    setTimeout(updateCompact,500);
   });
   updateCompact();
+  // Expose for lightbox to call on open
+  window._updateCompactCaption=updateCompact;
 })();
 
 (function(){
@@ -1203,6 +1221,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
     lightbox.classList.add('active');
     document.body.style.overflow='hidden';
+
+    // Re-check compact caption state on open
+    if(window._updateCompactCaption) window._updateCompactCaption();
 
     // Preload adjacent images for snappy navigation
     if(current+1<filtered.length) new Image().src=photoSrc(filtered[current+1]);
