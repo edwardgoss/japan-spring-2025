@@ -171,6 +171,68 @@
     opacity:.6;
   }
 
+  .menu-search{
+    padding:8px 12px 4px;
+    position:relative;
+  }
+  .menu-search input{
+    width:100%;
+    padding:7px 26px 7px 10px;
+    border:1px solid var(--menu-border);
+    border-radius:5px;
+    background:transparent;
+    color:var(--text);
+    font-family:'Libre Baskerville',Georgia,'Times New Roman',serif;
+    font-size:.7rem;
+    outline:none;
+    letter-spacing:.02em;
+    transition:border-color .15s;
+  }
+  .menu-search-clear{
+    position:absolute;
+    right:16px;top:50%;
+    transform:translateY(-70%);
+    background:none;border:none;
+    color:var(--text-secondary);
+    font-size:.75rem;
+    cursor:pointer;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .15s;
+    padding:2px 4px;
+    line-height:1;
+  }
+  .menu-search-clear.visible{
+    opacity:.5;
+    pointer-events:auto;
+  }
+  .menu-search-clear:hover{opacity:.8}
+  .menu-search input::placeholder{
+    color:var(--text-secondary);
+    opacity:.6;
+  }
+  .menu-search input:focus{
+    border-color:var(--text-secondary);
+  }
+  .menu-search-hint{
+    font-size:.55rem;
+    color:var(--text-secondary);
+    opacity:.5;
+    padding:3px 2px 0;
+    letter-spacing:.01em;
+  }
+
+  .no-results{
+    text-align:center;
+    color:var(--text-secondary);
+    font-size:.8rem;
+    padding:60px 20px;
+    opacity:.5;
+    font-style:italic;
+    display:none;
+  }
+  .no-results.visible{display:block}
+
   .menu-divider{
     height:1px;
     background:var(--menu-border);
@@ -264,28 +326,35 @@
   .lightbox-next{right:12px}
 
   .lightbox-caption{
-    position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
+    position:absolute;bottom:0;left:0;right:0;
     text-align:center;
     z-index:110;
-    max-width:80vw;
+    padding:28px 20px 18px;
+    background:rgba(0,0,0,.55);
+    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+    color:rgba(255,255,255,.96);
   }
   .lightbox-location{
-    color:#fff;
     font-family:'Libre Baskerville',Georgia,'Times New Roman',serif;
     font-size:.85rem;
     letter-spacing:.02em;
-    line-height:1.4;
+    line-height:1.5;
+    text-shadow:0 2px 10px rgba(0,0,0,.85),0 0 2px rgba(0,0,0,.75);
+  }
+  .lightbox-caption .jp{
+    text-shadow:0 2px 10px rgba(0,0,0,.85),0 0 2px rgba(0,0,0,.75);
   }
   .lightbox-city{opacity:.5}
   .lightbox-place{opacity:.85}
   .lightbox-counter{
     font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     font-variant-numeric:tabular-nums;
-    font-size:.7rem;
-    color:rgba(255,255,255,.4);
-    margin-top:4px;
+    font-size:.65rem;
+    color:rgba(255,255,255,.35);
+    margin-top:6px;
     letter-spacing:.04em;
     line-height:1;
+    text-shadow:0 1px 4px rgba(0,0,0,.6);
   }
   .lightbox-sep{opacity:.45;margin:0 2px}
 
@@ -300,6 +369,35 @@
   }
   .lightbox.loading .lightbox-spinner{display:block}
   @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ── Scroll to top ── */
+  .scroll-top{
+    position:fixed;
+    bottom:24px;right:24px;
+    z-index:40;
+    width:36px;height:36px;
+    border-radius:50%;
+    border:none;
+    background:var(--text);
+    color:var(--bg);
+    font-size:.85rem;
+    cursor:pointer;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .3s ease,transform .3s ease;
+    transform:translateY(8px);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 2px 10px rgba(0,0,0,.15);
+  }
+  .scroll-top.visible{
+    opacity:.5;
+    pointer-events:auto;
+    transform:translateY(0);
+  }
+  .scroll-top:hover{opacity:.8}
+  @media(max-width:600px){
+    .scroll-top{bottom:16px;right:16px;width:32px;height:32px;font-size:.75rem}
+  }
 
   .jp{
   opacity:.65;
@@ -318,7 +416,12 @@
     .menu-btn{font-size:1.1rem}
     .menu-dropdown{right:16px;min-width:180px}
     .menu-item{padding:8px 14px;font-size:.7rem}
-    .lightbox-location{font-size:.75rem}
+    .menu-search input{font-size:.65rem;padding:6px 9px}
+    .menu-search-hint{font-size:.5rem}
+    .lightbox-location{font-size:.75rem;line-height:1.45}
+    .lightbox-caption{padding:24px 16px 14px}
+    .lightbox-counter{font-size:.6rem;margin-top:5px}
+    .lightbox-location .jp{font-size:.8em}
   }
 </style>
 </head>
@@ -335,6 +438,9 @@
 <div class="menu-overlay" id="menuOverlay"></div>
 
 <div class="gallery" id="gallery"></div>
+<div class="no-results" id="noResults">No matches</div>
+
+<button class="scroll-top" id="scrollTop" aria-label="Scroll to top">&uarr;</button>
 
 <div class="lightbox" id="lightbox">
   <button class="lightbox-close" aria-label="Close">&times;</button>
@@ -352,6 +458,7 @@
 </div>
 
 <script>
+if('scrollRestoration' in history) history.scrollRestoration='manual';
 (function(){
   const TOTAL=227;
   const GAP=6;
@@ -620,8 +727,22 @@
     if(c) cityCounts[c]=(cityCounts[c]||0)+1;
   }
 
+  // ── Build search index (plain text, diacritics-normalized) ──
+  function stripHTML(s){return s.replace(/<[^>]*>/g,'')}
+  function stripPunctuation(s){return s.replace(/[,.\-\u2014\u2013()[\]{}\u300c\u300d\u3010\u3011]/g,' ')}
+  function normalize(s){
+    try{return stripPunctuation(s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase())}
+    catch(e){return stripPunctuation(s.toLowerCase())}
+  }
+  const searchIndex=[];
+  for(let i=1;i<=TOTAL;i++){
+    var raw=(CAPTIONS[i]||'')+(cityMap[i]?' '+cityMap[i]:'');
+    searchIndex.push(normalize(stripHTML(raw)));
+  }
+
   // ── DOM refs ──
   const gallery=document.getElementById('gallery');
+  const noResults=document.getElementById('noResults');
   const lightbox=document.getElementById('lightbox');
   const lbImg=lightbox.querySelector('img');
   const lbCity=lightbox.querySelector('.lightbox-city');
@@ -633,14 +754,68 @@
   const menuOverlay=document.getElementById('menuOverlay');
 
   let current=0;
+  let lightboxOpenCurrent=-1;
+  let lightboxOpenWidth=0;
   let activeFilter='All';
+  let activeSearch='';
   const items=[];
   let filtered=[];
   let menuOpen=false;
 
   // ── Build hamburger menu ──
+  // Search input
+  const searchWrap=document.createElement('div');
+  searchWrap.className='menu-search';
+  const searchInput=document.createElement('input');
+  searchInput.type='text';
+  searchInput.placeholder='Search locations\u2026';
+  searchInput.setAttribute('aria-label','Search photos by location');
+  const searchHint=document.createElement('div');
+  searchHint.className='menu-search-hint';
+  searchHint.textContent='Try: \u201CGion\u201D, \u201CShinjuku\u201D, \u201C\u795e\u793E\u201D';
+  const searchClear=document.createElement('button');
+  searchClear.className='menu-search-clear';
+  searchClear.type='button';
+  searchClear.innerHTML='&times;';
+  searchClear.setAttribute('aria-label','Clear search');
+  searchWrap.appendChild(searchInput);
+  searchWrap.appendChild(searchClear);
+  searchWrap.appendChild(searchHint);
+  menuDropdown.appendChild(searchWrap);
+
+  function updateSearchClear(){
+    searchClear.classList.toggle('visible',searchInput.value.length>0);
+  }
+
+  // Prevent menu close when interacting with search
+  searchInput.addEventListener('click',function(e){e.stopPropagation()});
+  searchClear.addEventListener('click',function(e){
+    e.stopPropagation();
+    clearSearch();
+    searchInput.focus();
+  });
+
+  // Search handler
+  searchInput.addEventListener('input',function(){
+    activeSearch=normalize(searchInput.value.trim());
+    updateSearchClear();
+    updateFiltered();
+    layout();
+    // Scroll to top when search changes
+    if(activeSearch) window.scrollTo({top:0,behavior:'instant'});
+    updateNoResults();
+    lastShownKey='';
+    updateNowShowing();
+  });
+
+  // Filter items
   const allCities=['All',...cityOrder];
   allCities.forEach(function(city,i){
+    if(i===0){
+      const div=document.createElement('div');
+      div.className='menu-divider';
+      menuDropdown.appendChild(div);
+    }
     if(i===1){
       const div=document.createElement('div');
       div.className='menu-divider';
@@ -666,6 +841,17 @@
     menuOpen=false;
     menuDropdown.classList.remove('open');
     menuOverlay.classList.remove('open');
+  }
+
+  function clearSearch(){
+    activeSearch='';
+    searchInput.value='';
+    updateSearchClear();
+    updateFiltered();
+    layout();
+    updateNoResults();
+    lastShownKey='';
+    updateNowShowing();
   }
 
   menuBtn.addEventListener('click',function(e){
@@ -706,15 +892,9 @@
     // Try to scroll to the anchor photo's new position
     var scrollTarget=-1;
     if(anchorIdx>=0){
-      if(city==='All'){
-        // All always contains every photo
+      // Check if the anchor photo is in the new filtered set
+      if(filtered.indexOf(anchorIdx)!==-1){
         scrollTarget=anchorIdx;
-      }else{
-        // Check if the anchor photo is in the new filtered set
-        var anchorNum=anchorIdx+1;
-        if(cityMap[anchorNum]===city){
-          scrollTarget=anchorIdx;
-        }
       }
     }
 
@@ -738,16 +918,29 @@
     }
 
     updateNowShowing();
+    updateNoResults();
   }
 
   function updateFiltered(){
     filtered=[];
     items.forEach(function(item,idx){
       const photoNum=idx+1;
-      const match=activeFilter==='All'||cityMap[photoNum]===activeFilter;
+      var cityMatch=activeFilter==='All'||cityMap[photoNum]===activeFilter;
+      var searchMatch=true;
+      if(activeSearch){
+        var words=activeSearch.split(/\s+/);
+        for(var wi=0;wi<words.length;wi++){
+          if(words[wi]&&searchIndex[idx].indexOf(words[wi])===-1){searchMatch=false;break}
+        }
+      }
+      var match=cityMatch&&searchMatch;
       item.el.classList.toggle('filtered-out',!match);
       if(match) filtered.push(idx);
     });
+  }
+
+  function updateNoResults(){
+    noResults.classList.toggle('visible',filtered.length===0);
   }
 
   // ── "Now showing" label ──
@@ -755,10 +948,15 @@
   function nowShowingHTML(city){
     var html='<span class="now-showing-label">Now showing \u00b7 </span><span class="now-showing-city">'+city+'</span>';
     if(activeFilter!=='All') html+=' <span class="now-showing-filtered">\u00b7 Filtered</span>';
+    if(activeSearch){
+      var q=searchInput.value.trim();
+      if(q.length>20) q=q.slice(0,20)+'\u2026';
+      html+=' <span class="now-showing-filtered">\u00b7 Search: '+q+'</span>';
+    }
     return html;
   }
   function setNowShowing(city){
-    var key=city+'|'+activeFilter;
+    var key=city+'|'+activeFilter+'|'+activeSearch;
     if(key===lastShownKey) return;
     lastShownKey=key;
     nowShowingEl.classList.add('hidden');
@@ -768,7 +966,7 @@
     },200);
   }
   function setNowShowingImmediate(city){
-    var key=city+'|'+activeFilter;
+    var key=city+'|'+activeFilter+'|'+activeSearch;
     if(key===lastShownKey&&nowShowingEl.innerHTML) return;
     lastShownKey=key;
     nowShowingEl.innerHTML=nowShowingHTML(city);
@@ -857,7 +1055,23 @@
     return 4;
   }
 
+  // ── Batched layout scheduling ──
+  let layoutQueued=false;
+  function scheduleLayout(){
+    if(!layoutQueued){
+      layoutQueued=true;
+      requestAnimationFrame(function(){
+        layoutQueued=false;
+        layout();
+      });
+    }
+  }
+
   // ── Image load tracking ──
+  function onImageReady(item){
+    item.el.classList.add('loaded');
+    scheduleLayout();
+  }
   items.forEach(function(item){
     if(item.img.complete&&item.img.naturalWidth){
       item.ratio=item.img.naturalWidth/item.img.naturalHeight;
@@ -867,8 +1081,15 @@
       item.img.onload=function(){
         item.ratio=item.img.naturalWidth/item.img.naturalHeight;
         item.loaded=true;
-        item.el.classList.add('loaded');
-        layout();
+        if(item.img.decode){
+          item.img.decode().then(function(){
+            onImageReady(item);
+          }).catch(function(){
+            onImageReady(item);
+          });
+        }else{
+          onImageReady(item);
+        }
       };
     }
   });
@@ -882,12 +1103,25 @@
     resizeTimer=setTimeout(layout,100);
   });
 
+  // ── Scroll to top button ──
+  const scrollTopBtn=document.getElementById('scrollTop');
+  scrollTopBtn.addEventListener('click',function(){
+    window.scrollTo({top:0,behavior:'smooth'});
+  });
+  var scrollTopVisible=false;
+
+  // ── Unified scroll handler ──
   let scrollTicking=false;
   window.addEventListener('scroll',function(){
     if(!scrollTicking){
       scrollTicking=true;
       requestAnimationFrame(function(){
         updateNowShowing();
+        var show=window.scrollY>600;
+        if(show!==scrollTopVisible){
+          scrollTopVisible=show;
+          scrollTopBtn.classList.toggle('visible',show);
+        }
         scrollTicking=false;
       });
     }
@@ -900,6 +1134,8 @@
     const idx=parseInt(item.dataset.index,10);
     current=filtered.indexOf(idx);
     if(current===-1)return;
+    lightboxOpenCurrent=current;
+    lightboxOpenWidth=document.documentElement.clientWidth;
     openLightbox();
   });
 
@@ -933,14 +1169,22 @@
 
     lightbox.classList.add('active');
     document.body.style.overflow='hidden';
+
+    // Preload adjacent images for snappy navigation
+    if(current+1<filtered.length) new Image().src=photoSrc(filtered[current+1]);
+    if(current-1>=0) new Image().src=photoSrc(filtered[current-1]);
   }
 
   function closeLightbox(){
     lightbox.classList.remove('active','loading');
     document.body.style.overflow='';
     lbImg.src='';
-    // Scroll grid to the photo the user was viewing
-    if(current>=0&&current<filtered.length){
+    // Re-layout in case viewport changed (e.g. zoom) while lightbox was open
+    layout();
+    // Scroll to current photo if user navigated OR viewport changed (zoom)
+    var didNavigate=current!==lightboxOpenCurrent;
+    var viewportChanged=document.documentElement.clientWidth!==lightboxOpenWidth;
+    if((didNavigate||viewportChanged)&&current>=0&&current<filtered.length){
       var el=items[filtered[current]].el;
       var headerH=document.querySelector('header').offsetHeight;
       var galleryTop=gallery.getBoundingClientRect().top+window.scrollY;
@@ -965,9 +1209,25 @@
   });
 
   document.addEventListener('keydown',function(e){
+    // Don't capture keys when typing in search
+    var inSearch=document.activeElement===searchInput;
+
+    if(e.key==='Escape'){
+      if(lightbox.classList.contains('active')){closeLightbox();return}
+      if(activeSearch){clearSearch();searchInput.blur();return}
+      if(menuOpen){closeMenu();return}
+    }
+
+    // / key opens menu and focuses search (only when not typing)
+    if(e.key==='/'&&!inSearch&&!lightbox.classList.contains('active')){
+      e.preventDefault();
+      if(!menuOpen) openMenu();
+      searchInput.focus();
+      return;
+    }
+
     if(!lightbox.classList.contains('active'))return;
-    if(e.key==='Escape')closeLightbox();
-    else if(e.key==='ArrowLeft')navigate(-1);
+    if(e.key==='ArrowLeft')navigate(-1);
     else if(e.key==='ArrowRight')navigate(1);
   });
 
