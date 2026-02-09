@@ -867,6 +867,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     layout();
     updateNoResults();
     lastShownKey='';
+    forceNowShowingFadeOnce = true;
     setNowShowing(cityMap[1] || 'Tokyo'); // force the fade to the default top city
     updateClearAllBtn();
     closeMenu();
@@ -1080,15 +1081,35 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     }
     return html;
   }
-  function setNowShowing(city){
-    var key=city+'|'+activeFilter+'|'+activeSearch;
-    if(key===lastShownKey) return;
-    lastShownKey=key;
+  let nowShowingTimer = null;
+  let nowShowingInTransition = false;
+
+  function setNowShowing(city) {
+    var key = city + '|' + activeFilter + '|' + activeSearch;
+
+    // If we're already correct and not mid-transition, bail
+    if (key === lastShownKey && !nowShowingInTransition) return;
+
+    lastShownKey = key;
+
+    // Cancel any pending swap
+    if (nowShowingTimer) {
+      clearTimeout(nowShowingTimer);
+      nowShowingTimer = null;
+    }
+
+    nowShowingInTransition = true;
+
+    // Force hidden state first (Safari likes this separation)
     nowShowingEl.classList.add('hidden');
-    setTimeout(function(){
-      nowShowingEl.innerHTML=nowShowingHTML(city);
-      nowShowingEl.classList.remove('hidden');
-    },200);
+
+    nowShowingTimer = setTimeout(function () {
+      nowShowingEl.innerHTML = nowShowingHTML(city);
+      requestAnimationFrame(function () {
+        nowShowingEl.classList.remove('hidden');
+        nowShowingInTransition = false;
+      });
+    }, 180);
   }
   function setNowShowingImmediate(city){
     var key=city+'|'+activeFilter+'|'+activeSearch;
@@ -1099,15 +1120,16 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   }
 
   function updateNowShowing(){
-    // When filtered to a city, show that city immediately
-    if(activeFilter!=='All'){
-      if(forceNowShowingFadeOnce){
-      forceNowShowingFadeOnce=false;
-      setNowShowing(activeFilter);
-    } else {
-      setNowShowingImmediate(activeFilter);
-    }
-    return;
+    if (activeFilter !== 'All') {
+      // Only use "immediate" on first paint (when nothing has ever rendered yet)
+      if (!nowShowingEl.innerHTML) {
+        setNowShowingImmediate(activeFilter);
+      } else {
+        // Always use the fade path for filter changes
+        setNowShowing(activeFilter);
+      }
+      forceNowShowingFadeOnce = false; // optional safety: don't carry this flag forward
+      return;
     }
     // In "All" mode, detect from scroll position
     const headerH=document.querySelector('header').offsetHeight;
