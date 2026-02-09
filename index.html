@@ -107,13 +107,14 @@
     margin-top:3px;
     min-height:1.1em;
     letter-spacing:.02em;
-    transition:opacity .2s ease;
-    transform:translateZ(0);
+    transition:opacity .15s ease-out;
+    transform:translate3d(0,0,0);
     will-change:opacity;
     backface-visibility:hidden;
     -webkit-font-smoothing:antialiased;
+    contain:layout style paint;
   }
-  .now-showing.hidden{opacity:0}
+  .now-showing.hidden{opacity:0;visibility:hidden}
   .now-showing-label{
     opacity:.6;
   }
@@ -478,21 +479,21 @@
       display:flex;
       flex-direction:column;
       align-items:center;
+      justify-content:space-between;
       padding:var(--lb-top-pad, 12px) 0 0 0;
+      box-sizing:border-box;
     }
     .lightbox.active img{
-      flex:0 0 auto;
+      flex:0 1 auto;
       max-width:96vw;
       max-height:calc(var(--lb-vh, 100vh) - var(--lb-caption-h, 0px) - var(--lb-top-pad, 12px) - 12px);
-      margin-top:auto;
+      object-fit:contain;
       touch-action:pan-x pan-y pinch-zoom;
     }
     .lightbox.active .lightbox-caption{
       position:static;
       flex:0 0 auto;
       width:100%;
-      margin-top:auto;
-      margin-bottom:0;
       padding:6px 16px 6px;
       background:rgba(0,0,0,.45);
     }
@@ -502,9 +503,10 @@
   @media (hover: none) and (pointer: coarse) and (max-height: 500px){
     .lightbox.active{
       padding-top:var(--lb-top-pad, 20px);
+      padding-bottom:0;
     }
     .lightbox.active img{
-      max-height:calc(var(--lb-vh, 100vh) - var(--lb-caption-h, 0px) - var(--lb-top-pad, 20px) - 8px);
+      max-height:calc(var(--lb-vh, 100vh) - var(--lb-caption-h, 0px) - var(--lb-top-pad, 20px) - 12px);
     }
   }
 
@@ -1161,7 +1163,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   let nowShowingInTransition = false;
   let pendingNowShowingKey = '';
   let pendingNowShowingCity = '';
-  const NOW_SHOWING_FADE_MS = 200; // keep in sync with CSS
+  const NOW_SHOWING_FADE_MS = 150; // keep in sync with CSS
 
   function applyNowShowingImmediate(city, key){
     lastShownKey = key;
