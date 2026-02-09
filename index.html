@@ -867,8 +867,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     layout();
     updateNoResults();
     lastShownKey='';
-    forceNowShowingFadeOnce = true;
-    setNowShowing(cityMap[1] || 'Tokyo'); // force the fade to the default top city
+    updateNowShowing();
     updateClearAllBtn();
     closeMenu();
     // return to top for a predictable reset
@@ -1041,7 +1040,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
         gallery.classList.remove('settling-deep');
       });
     }
-    forceNowShowingFadeOnce = true;
     updateNowShowing();
     updateNoResults();
   }
@@ -1070,7 +1068,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
   // ── "Now showing" label ──
   let lastShownKey='';
-  let forceNowShowingFadeOnce=false;
   function nowShowingHTML(city){
     var html='<span class="now-showing-label">Now showing \u00b7 </span><span class="now-showing-city">'+city+'</span>';
     if(activeFilter!=='All') html+=' <span class="now-showing-filtered">\u00b7 Filtered</span>';
@@ -1083,52 +1080,99 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   }
   let nowShowingTimer = null;
   let nowShowingInTransition = false;
+  let pendingNowShowingKey = '';
+  let pendingNowShowingCity = '';
+  const NOW_SHOWING_FADE_MS = 250; // keep in sync with CSS
 
-  function setNowShowing(city) {
-    var key = city + '|' + activeFilter + '|' + activeSearch;
-
-    // If we're already correct and not mid-transition, bail
-    if (key === lastShownKey && !nowShowingInTransition) return;
-
+  function applyNowShowingImmediate(city, key){
     lastShownKey = key;
+    pendingNowShowingKey = '';
+    pendingNowShowingCity = '';
+    nowShowingEl.innerHTML = nowShowingHTML(city);
+    nowShowingEl.classList.remove('hidden');
+  }
 
-    // Cancel any pending swap
+  function runNowShowingTransition(city, key){
+    // Cancel any pending swap timer
     if (nowShowingTimer) {
       clearTimeout(nowShowingTimer);
       nowShowingTimer = null;
     }
 
     nowShowingInTransition = true;
+    lastShownKey = key;
 
-    // Force hidden state first (Safari likes this separation)
-    nowShowingEl.classList.add('hidden');
+    var done = false;
+    function finishFadeOut(){
+      if(done) return;
+      done = true;
+      if (nowShowingTimer) {
+        clearTimeout(nowShowingTimer);
+        nowShowingTimer = null;
+      }
+      nowShowingEl.removeEventListener('transitionend', onEnd);
 
-    nowShowingTimer = setTimeout(function () {
       nowShowingEl.innerHTML = nowShowingHTML(city);
-      requestAnimationFrame(function () {
+      requestAnimationFrame(function(){
         nowShowingEl.classList.remove('hidden');
         nowShowingInTransition = false;
+
+        // If a newer request arrived while fading, run it once
+        if (pendingNowShowingKey && pendingNowShowingKey !== lastShownKey) {
+          var nextKey = pendingNowShowingKey;
+          var nextCity = pendingNowShowingCity;
+          pendingNowShowingKey = '';
+          pendingNowShowingCity = '';
+          runNowShowingTransition(nextCity, nextKey);
+        } else {
+          pendingNowShowingKey = '';
+          pendingNowShowingCity = '';
+        }
       });
-    }, 180);
+    }
+
+    function onEnd(e){
+      if(e && e.propertyName !== 'opacity') return;
+      finishFadeOut();
+    }
+
+    // If already hidden or empty (first paint), skip fade-out
+    if (nowShowingEl.classList.contains('hidden') || !nowShowingEl.innerHTML) {
+      finishFadeOut();
+      return;
+    }
+
+    // Start fade-out on its own frame so Safari applies the opacity change cleanly
+    requestAnimationFrame(function(){
+      nowShowingEl.classList.add('hidden');
+      nowShowingEl.addEventListener('transitionend', onEnd);
+      nowShowingTimer = setTimeout(finishFadeOut, NOW_SHOWING_FADE_MS + 60);
+    });
   }
-  function setNowShowingImmediate(city){
-    var key=city+'|'+activeFilter+'|'+activeSearch;
-    if(key===lastShownKey&&nowShowingEl.innerHTML) return;
-    lastShownKey=key;
-    nowShowingEl.innerHTML=nowShowingHTML(city);
-    nowShowingEl.classList.remove('hidden');
+
+  function requestNowShowing(city){
+    var key = city + '|' + activeFilter + '|' + activeSearch;
+
+    // If we're already correct, do nothing (even mid-transition)
+    if (key === lastShownKey) return;
+
+    pendingNowShowingKey = key;
+    pendingNowShowingCity = city;
+
+    // First paint: set immediately so we don't fade in from blank
+    if (!nowShowingEl.innerHTML && !nowShowingInTransition) {
+      applyNowShowingImmediate(city, key);
+      return;
+    }
+
+    if (nowShowingInTransition) return;
+
+    runNowShowingTransition(city, key);
   }
 
   function updateNowShowing(){
     if (activeFilter !== 'All') {
-      // Only use "immediate" on first paint (when nothing has ever rendered yet)
-      if (!nowShowingEl.innerHTML) {
-        setNowShowingImmediate(activeFilter);
-      } else {
-        // Always use the fade path for filter changes
-        setNowShowing(activeFilter);
-      }
-      forceNowShowingFadeOnce = false; // optional safety: don't carry this flag forward
+      requestNowShowing(activeFilter);
       return;
     }
     // In "All" mode, detect from scroll position
@@ -1148,14 +1192,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     }
 
     if (bestCity) {
-      if (forceNowShowingFadeOnce) {
-        forceNowShowingFadeOnce = false;
-        setNowShowing(bestCity);
-      } else if (!nowShowingEl.innerHTML) {
-        setNowShowingImmediate(bestCity);
-      } else {
-        setNowShowing(bestCity);
-      }
+      requestNowShowing(bestCity);
     }
   }
 
