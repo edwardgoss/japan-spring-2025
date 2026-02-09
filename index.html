@@ -424,24 +424,22 @@
     .lightbox-location .jp{font-size:.8em}
   }
 
-  /* ── Compact caption: mobile landscape, short viewport ── */
-  @media(max-height:500px) and (orientation:landscape) and (max-width:1024px){
-    .lightbox-caption{
-      padding:4px 14px 3px;
-      background:rgba(0,0,0,.45);
-    }
-    .lightbox-location{
-      font-size:.55rem;
-      line-height:1.3;
-      display:-webkit-box;
-      -webkit-line-clamp:2;
-      -webkit-box-orient:vertical;
-      overflow:hidden;
-    }
-    .lightbox-counter{
-      font-size:.45rem;
-      margin-top:1px;
-    }
+  /* ── Compact caption: mobile landscape, short viewport (JS-driven) ── */
+  html.compact-caption .lightbox-caption{
+    padding:4px 14px 3px;
+    background:rgba(0,0,0,.45);
+  }
+  html.compact-caption .lightbox-location{
+    font-size:.55rem;
+    line-height:1.3;
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+  }
+  html.compact-caption .lightbox-counter{
+    font-size:.45rem;
+    margin-top:1px;
   }
 </style>
 </head>
@@ -479,6 +477,22 @@
 
 <script>
 if('scrollRestoration' in history) history.scrollRestoration='manual';
+
+// Compact caption detection (JS-driven for iOS Safari reliability)
+(function(){
+  function updateCompact(){
+    var compact=window.innerHeight<=500
+      &&window.innerWidth>window.innerHeight
+      &&window.innerWidth<=1024;
+    document.documentElement.classList.toggle('compact-caption',compact);
+  }
+  window.addEventListener('resize',updateCompact);
+  window.addEventListener('orientationchange',function(){
+    setTimeout(updateCompact,150);
+  });
+  updateCompact();
+})();
+
 (function(){
   const TOTAL=227;
   const GAP=6;
