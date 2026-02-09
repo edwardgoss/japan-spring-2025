@@ -534,10 +534,10 @@
   166: 'Philosopher’s Path <span class="jp">(哲学の道)</span>',
   167: 'Philosopher’s Path <span class="jp">(哲学の道)</span>',
   168: 'Philosopher’s Path <span class="jp">(哲学の道)</span>',
-  169: 'Hōnen-in Temple <span class="jp">(法然院)</span>',
+  169: 'Philosopher’s Path <span class="jp">(哲学の道)</span>',
   170: 'Hōnen-in Temple <span class="jp">(法然院)</span>',
   171: 'Hōnen-in Temple <span class="jp">(法然院)</span>',
-  172: 'Philosopher’s Path <span class="jp">(哲学の道)</span>',
+  172: 'Hōnen-in Temple <span class="jp">(法然院)</span>',
   173: 'Ginkaku-ji <span class="jp">(銀閣寺)</span>',
   174: 'Ginkaku-ji <span class="jp">(銀閣寺)</span>',
   175: 'Streets of Sakyō <span class="jp">(左京区の街並み)</span>',
@@ -813,6 +813,8 @@
     div.dataset.photoNum=i;
     const img=document.createElement('img');
     img.alt='Japan Spring 2025 - '+(cityMap[i]||'Photo')+' '+i;
+    if(i<=8){img.loading='eager';img.fetchPriority='high'}
+    else{img.loading='lazy'}
     img.src=src;
     div.appendChild(img);
     gallery.appendChild(div);
