@@ -493,8 +493,11 @@
   @media (hover: none) and (pointer: coarse) and (max-height: 500px){
     .lightbox img{
       max-height:calc(var(--lb-vh, 100vh) - var(--lb-caption-h, 0px) - 36px);
-      transform:scale(0.96);
-      transform-origin:top center;
+      margin-top:auto;
+      margin-bottom:auto;
+    }
+    .lightbox-caption{
+      margin-top:0;
     }
   }
 
