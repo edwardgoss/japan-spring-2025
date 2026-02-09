@@ -299,6 +299,8 @@
     justify-content:center;
     opacity:0;
     transition:opacity .25s ease;
+    width:var(--lb-vw,100vw);
+    height:var(--lb-vh,100vh);
   }
   .lightbox.active{
     display:flex;
@@ -468,7 +470,7 @@
   }
 
   /* ── Touch devices in landscape: stack photo above caption ── */
-  @media (hover: none) and (pointer: coarse) and (orientation: landscape){
+  @media (hover: none) and (pointer: coarse){
     .lightbox{
       flex-direction:column;
       justify-content:center;
@@ -476,7 +478,7 @@
     }
     .lightbox img{
       max-width:96vw;
-      max-height:calc(100vh - 120px);
+      max-height:calc(var(--lb-vh, 100vh) - var(--lb-caption-h, 0px) - 24px);
     }
     .lightbox-caption{
       position:static;
@@ -847,6 +849,16 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const lbCity=lightbox.querySelector('.lightbox-city');
   const lbPlace=lightbox.querySelector('.lightbox-place');
   const lbCounter=lightbox.querySelector('.lightbox-counter');
+
+  function updateLightboxMetrics(){
+    if(!lightbox.classList.contains('active')) return;
+    var vp=window.visualViewport?{w:window.visualViewport.width,h:window.visualViewport.height}:{w:window.innerWidth,h:window.innerHeight};
+    lightbox.style.setProperty('--lb-vw',vp.w+'px');
+    lightbox.style.setProperty('--lb-vh',vp.h+'px');
+    var cap=lightbox.querySelector('.lightbox-caption');
+    var capH=cap?cap.offsetHeight:0;
+    lightbox.style.setProperty('--lb-caption-h',capH+'px');
+  }
   const nowShowingEl=document.getElementById('nowShowing');
   const menuBtn=document.getElementById('menuBtn');
   const menuDropdown=document.getElementById('menuDropdown');
@@ -1366,7 +1378,10 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     const realIdx=filtered[current];
     const photoNum=realIdx+1;
     lightbox.classList.add('loading');
-    lbImg.onload=function(){lightbox.classList.remove('loading')};
+    lbImg.onload=function(){
+      lightbox.classList.remove('loading');
+      requestAnimationFrame(updateLightboxMetrics);
+    };
     lbImg.src=photoSrc(realIdx);
     lbImg.alt='Japan Spring 2025 - Photo '+photoNum;
 
@@ -1391,6 +1406,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
     // Re-check compact caption state on open
     if(window._updateCompactCaption) window._updateCompactCaption();
+    requestAnimationFrame(updateLightboxMetrics);
 
     // Preload adjacent images for snappy navigation
     if(current+1<filtered.length) new Image().src=photoSrc(filtered[current+1]);
@@ -1402,6 +1418,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     lightbox.classList.remove('active','loading');
     document.body.style.overflow='';
     lbImg.src='';
+    lightbox.style.removeProperty('--lb-vw');
+    lightbox.style.removeProperty('--lb-vh');
+    lightbox.style.removeProperty('--lb-caption-h');
     // Re-layout in case viewport changed (e.g. zoom) while lightbox was open
     layout();
     // Scroll to current photo if user navigated OR viewport changed (zoom)
@@ -1426,6 +1445,21 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   lightbox.querySelector('.lightbox-close').addEventListener('click',closeLightbox);
   lightbox.querySelector('.lightbox-prev').addEventListener('click',function(){navigate(-1)});
   lightbox.querySelector('.lightbox-next').addEventListener('click',function(){navigate(1)});
+
+  window.addEventListener('resize',function(){
+    updateLightboxMetrics();
+  });
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize',function(){
+      updateLightboxMetrics();
+    });
+  }
+  window.addEventListener('orientationchange',function(){
+    if(!lightbox.classList.contains('active')) return;
+    updateLightboxMetrics();
+    setTimeout(updateLightboxMetrics,200);
+    setTimeout(updateLightboxMetrics,500);
+  });
 
   lightbox.addEventListener('click',function(e){
     if(e.target===lightbox)closeLightbox();
