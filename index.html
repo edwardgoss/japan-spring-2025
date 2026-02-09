@@ -101,22 +101,17 @@
   .menu-btn:hover{opacity:.8}
 
   /* Now showing label */
-  .now-showing-container{
-    position:relative;
-    min-height:1.1em;
-    margin-top:3px;
-    pointer-events:none;
-  }
   .now-showing{
     font-size:.7rem;
     color:var(--text-secondary);
+    margin-top:3px;
+    min-height:1.1em;
     letter-spacing:.02em;
     transition:opacity .2s ease;
     transform:translateZ(0);
     will-change:opacity;
     backface-visibility:hidden;
     -webkit-font-smoothing:antialiased;
-    pointer-events:none;
   }
   .now-showing.hidden{opacity:0}
   .now-showing-label{
@@ -435,8 +430,7 @@
     header{padding:10px 16px 8px}
     header h1{font-size:1.1rem}
     .header-byline{font-size:.6rem}
-    .now-showing-container{min-height:1em}
-    .now-showing{font-size:.6rem}
+    .now-showing{font-size:.6rem;min-height:1em}
     .menu-btn{font-size:1.1rem}
     .menu-dropdown{right:16px;min-width:180px}
     .menu-item{padding:8px 14px;font-size:.7rem}
@@ -528,9 +522,7 @@
     <h1 id="titleTap" aria-label="Scroll to top">Japan Spring 2025 <span class="header-byline">&middot; Edward Goss</span></h1>
     <button class="menu-btn" id="menuBtn" aria-label="Filter menu">&#9776;</button>
   </div>
-  <div class="now-showing-container">
-    <div class="now-showing" id="nowShowing"></div>
-  </div>
+  <div class="now-showing" id="nowShowing"></div>
   <div class="menu-dropdown" id="menuDropdown"></div>
 </header>
 <div class="menu-overlay" id="menuOverlay"></div>
