@@ -426,11 +426,11 @@
 
   /* ── Compact caption: mobile landscape, short viewport ── */
   @media(max-height:500px) and (orientation:landscape) and (max-width:1024px){
-    .lightbox-caption.compact{
+    .lightbox-caption{
       padding:4px 14px 3px;
       background:rgba(0,0,0,.45);
     }
-    .lightbox-caption.compact .lightbox-location{
+    .lightbox-location{
       font-size:.55rem;
       line-height:1.3;
       display:-webkit-box;
@@ -438,10 +438,7 @@
       -webkit-box-orient:vertical;
       overflow:hidden;
     }
-    .lightbox-caption.compact .lightbox-city{
-      font-size:.55rem;
-    }
-    .lightbox-caption.compact .lightbox-counter{
+    .lightbox-counter{
       font-size:.45rem;
       margin-top:1px;
     }
@@ -771,7 +768,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const lbCity=lightbox.querySelector('.lightbox-city');
   const lbPlace=lightbox.querySelector('.lightbox-place');
   const lbCounter=lightbox.querySelector('.lightbox-counter');
-  const lbCaption=lightbox.querySelector('.lightbox-caption');
   const nowShowingEl=document.getElementById('nowShowing');
   const menuBtn=document.getElementById('menuBtn');
   const menuDropdown=document.getElementById('menuDropdown');
@@ -1198,23 +1194,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     if(current+1<filtered.length) new Image().src=photoSrc(filtered[current+1]);
     if(current-1>=0) new Image().src=photoSrc(filtered[current-1]);
 
-    // Compact caption mode for mobile landscape
-    if(compactMQ.matches){
-      lbCaption.classList.add('compact');
-    }else{
-      lbCaption.classList.remove('compact');
-    }
   }
-
-  var compactMQ=window.matchMedia('(max-height:500px) and (orientation:landscape) and (max-width:1024px)');
-  compactMQ.addEventListener('change',function(){
-    if(!lightbox.classList.contains('active')) return;
-    if(compactMQ.matches){
-      lbCaption.classList.add('compact');
-    }else{
-      lbCaption.classList.remove('compact');
-    }
-  });
 
   function closeLightbox(){
     lightbox.classList.remove('active','loading');
