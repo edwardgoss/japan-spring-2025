@@ -427,22 +427,22 @@
   /* ── Compact caption: mobile landscape, short viewport ── */
   @media(max-height:500px) and (orientation:landscape) and (max-width:1024px){
     .lightbox-caption.compact{
-      padding:6px 16px 5px;
+      padding:4px 16px 3px;
     }
     .lightbox-caption.compact .lightbox-location{
-      font-size:.65rem;
-      line-height:1.35;
+      font-size:.55rem;
+      line-height:1.3;
       display:-webkit-box;
       -webkit-line-clamp:2;
       -webkit-box-orient:vertical;
       overflow:hidden;
     }
     .lightbox-caption.compact .lightbox-place .jp{
-      font-size:.75em;
+      font-size:.7em;
     }
     .lightbox-caption.compact .lightbox-counter{
-      font-size:.55rem;
-      margin-top:2px;
+      font-size:.45rem;
+      margin-top:1px;
     }
   }
 </style>
@@ -1206,6 +1206,14 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   }
 
   var compactMQ=window.matchMedia('(max-height:500px) and (orientation:landscape) and (max-width:1024px)');
+  compactMQ.addEventListener('change',function(){
+    if(!lightbox.classList.contains('active')) return;
+    if(compactMQ.matches){
+      lbCaption.classList.add('compact');
+    }else{
+      lbCaption.classList.remove('compact');
+    }
+  });
 
   function closeLightbox(){
     lightbox.classList.remove('active','loading');
