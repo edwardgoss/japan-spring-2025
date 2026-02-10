@@ -48,6 +48,8 @@
     color:var(--text);
     font-family:'Libre Baskerville',Georgia,'Times New Roman',serif;
     min-height:100vh;
+    width:100%;
+    touch-action:manipulation;
   }
 
   /* ── Header ── */
@@ -1515,23 +1517,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   if(window.visualViewport){
     window.visualViewport.addEventListener('resize',updateCaptionHeight);
   }
-  // iOS Safari landscape↔portrait scale bug.
-  // After rotation Safari can get stuck at the wrong zoom level. The fix is
-  // to force a repaint after the viewport has fully settled (not during the
-  // transition — values are unstable then). We do this by briefly toggling a
-  // no-op style on <html>, which is enough to make Safari re-evaluate scale.
   window.addEventListener('orientationchange',function(){
     if(lightbox.classList.contains('active')) lightboxRotatedWhileOpen=true;
-    // Wait for Safari to fully commit to the new orientation dimensions
-    setTimeout(function(){
-      // Force repaint: toggle a harmless property on the root element
-      document.documentElement.style.display='table';
-      requestAnimationFrame(function(){
-        document.documentElement.style.display='';
-        // Now update caption height with stable viewport values
-        updateCaptionHeight();
-      });
-    }, 400);
+    setTimeout(updateCaptionHeight,400);
   });
 
 })();
