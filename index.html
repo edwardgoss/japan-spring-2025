@@ -1509,17 +1509,15 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     window.visualViewport.addEventListener('resize',updateCaptionHeight);
   }
   window.addEventListener('orientationchange',function(){
-    if(lightbox.classList.contains('active')){
-      lightboxRotatedWhileOpen=true;
-      // Reset viewport scale immediately on rotation to prevent iOS Safari
-      // from applying a persistent zoom that corrupts the page scale.
-      var vm=document.querySelector('meta[name="viewport"]');
-      if(vm){
-        vm.content='width=device-width, initial-scale=1.0, maximum-scale=1.0';
-        setTimeout(function(){
-          vm.content='width=device-width, initial-scale=1.0';
-        },300);
-      }
+    if(lightbox.classList.contains('active')) lightboxRotatedWhileOpen=true;
+    // iOS Safari landscape→portrait scale bug: force viewport reset on every
+    // rotation so the page doesn't get stuck at the wrong zoom level.
+    var vm=document.querySelector('meta[name="viewport"]');
+    if(vm){
+      vm.content='width=device-width, initial-scale=1.0, maximum-scale=1.0';
+      setTimeout(function(){
+        vm.content='width=device-width, initial-scale=1.0';
+      },300);
     }
     // iOS Safari needs time to settle after orientation change
     updateCaptionHeight();
