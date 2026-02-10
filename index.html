@@ -1426,20 +1426,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     lbImg.src='';
     lightbox.style.removeProperty('--caption-h');
 
-    // If the device rotated while the lightbox was open, iOS Safari can get
-    // stuck with a persistent zoom / scale. Reset the viewport meta tag to
-    // force it back to a clean 1:1 scale before we do anything else.
-    if(lightboxRotatedWhileOpen){
-      var vm=document.querySelector('meta[name="viewport"]');
-      if(vm){
-        vm.content='width=device-width, initial-scale=1.0, maximum-scale=1.0';
-        // One frame later, restore normal (allow-zoom) so pinch still works
-        requestAnimationFrame(function(){
-          vm.content='width=device-width, initial-scale=1.0';
-        });
-      }
-      lightboxRotatedWhileOpen=false;
-    }
+    lightboxRotatedWhileOpen=false;
 
     // Re-layout in case viewport changed while lightbox was open
     pendingLayoutAfterLightbox=false;
@@ -1522,8 +1509,18 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     window.visualViewport.addEventListener('resize',updateCaptionHeight);
   }
   window.addEventListener('orientationchange',function(){
-    // Flag if we rotated while lightbox was open (triggers viewport reset on close)
-    if(lightbox.classList.contains('active')) lightboxRotatedWhileOpen=true;
+    if(lightbox.classList.contains('active')){
+      lightboxRotatedWhileOpen=true;
+      // Reset viewport scale immediately on rotation to prevent iOS Safari
+      // from applying a persistent zoom that corrupts the page scale.
+      var vm=document.querySelector('meta[name="viewport"]');
+      if(vm){
+        vm.content='width=device-width, initial-scale=1.0, maximum-scale=1.0';
+        setTimeout(function(){
+          vm.content='width=device-width, initial-scale=1.0';
+        },300);
+      }
+    }
     // iOS Safari needs time to settle after orientation change
     updateCaptionHeight();
     setTimeout(updateCaptionHeight,200);
