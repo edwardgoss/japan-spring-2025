@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Japan Spring 2025</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -515,18 +515,25 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     var compact=vp.h<=600&&vp.w>vp.h&&vp.w<=1024;
     document.documentElement.classList.toggle('compact-caption',compact);
   }
-  window.addEventListener('resize',updateCompact);
+
+  // Debounced version — used on resize/rotation so we never read
+  // visualViewport while Safari's values are still mid-transition.
+  var compactTimer=null;
+  function updateCompactDebounced(delay){
+    clearTimeout(compactTimer);
+    compactTimer=setTimeout(updateCompact, delay||200);
+  }
+
+  window.addEventListener('resize',function(){ updateCompactDebounced(100); });
   if(window.visualViewport){
-    window.visualViewport.addEventListener('resize',updateCompact);
+    window.visualViewport.addEventListener('resize',function(){ updateCompactDebounced(100); });
   }
   window.addEventListener('orientationchange',function(){
-    // iOS Safari needs time to settle after orientation change
-    updateCompact();
-    setTimeout(updateCompact,200);
-    setTimeout(updateCompact,500);
+    // Don't read viewport at all until Safari has fully settled
+    updateCompactDebounced(400);
   });
   updateCompact();
-  // Expose for lightbox to call on open
+  // Expose for lightbox to call on open (immediate — viewport is stable at that point)
   window._updateCompactCaption=updateCompact;
 })();
 
@@ -1508,39 +1515,23 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   if(window.visualViewport){
     window.visualViewport.addEventListener('resize',updateCaptionHeight);
   }
-  // iOS Safari landscape→portrait scale bug.
-  // orientationchange fires before Safari has recalculated the viewport, so
-  // we can't reset there. Instead we watch visualViewport for the resize that
-  // follows a rotation (width/height swap is the signal), and reset then.
-  var lastOrientationWidth = window.innerWidth;
-  var viewportResetTimer = null;
-  function onViewportResizeForRotation(){
-    var newWidth = window.innerWidth;
-    if(newWidth === lastOrientationWidth) return; // not a rotation
-    lastOrientationWidth = newWidth;
-    // Cancel any in-flight reset
-    if(viewportResetTimer){ clearTimeout(viewportResetTimer); viewportResetTimer=null; }
-    var vm = document.querySelector('meta[name="viewport"]');
-    if(!vm) return;
-    // Force scale back to 1 now that Safari has the correct dimensions
-    vm.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0';
-    viewportResetTimer = setTimeout(function(){
-      vm.content = 'width=device-width, initial-scale=1.0';
-      viewportResetTimer = null;
-    }, 50);
-  }
-  if(window.visualViewport){
-    window.visualViewport.addEventListener('resize', onViewportResizeForRotation);
-  } else {
-    window.addEventListener('resize', onViewportResizeForRotation);
-  }
-
+  // iOS Safari landscape↔portrait scale bug.
+  // After rotation Safari can get stuck at the wrong zoom level. The fix is
+  // to force a repaint after the viewport has fully settled (not during the
+  // transition — values are unstable then). We do this by briefly toggling a
+  // no-op style on <html>, which is enough to make Safari re-evaluate scale.
   window.addEventListener('orientationchange',function(){
     if(lightbox.classList.contains('active')) lightboxRotatedWhileOpen=true;
-    // iOS Safari needs time to settle after orientation change
-    updateCaptionHeight();
-    setTimeout(updateCaptionHeight,200);
-    setTimeout(updateCaptionHeight,500);
+    // Wait for Safari to fully commit to the new orientation dimensions
+    setTimeout(function(){
+      // Force repaint: toggle a harmless property on the root element
+      document.documentElement.style.display='table';
+      requestAnimationFrame(function(){
+        document.documentElement.style.display='';
+        // Now update caption height with stable viewport values
+        updateCaptionHeight();
+      });
+    }, 400);
   });
 
 })();
