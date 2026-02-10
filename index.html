@@ -1508,17 +1508,35 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   if(window.visualViewport){
     window.visualViewport.addEventListener('resize',updateCaptionHeight);
   }
+  // iOS Safari landscape→portrait scale bug.
+  // orientationchange fires before Safari has recalculated the viewport, so
+  // we can't reset there. Instead we watch visualViewport for the resize that
+  // follows a rotation (width/height swap is the signal), and reset then.
+  var lastOrientationWidth = window.innerWidth;
+  var viewportResetTimer = null;
+  function onViewportResizeForRotation(){
+    var newWidth = window.innerWidth;
+    if(newWidth === lastOrientationWidth) return; // not a rotation
+    lastOrientationWidth = newWidth;
+    // Cancel any in-flight reset
+    if(viewportResetTimer){ clearTimeout(viewportResetTimer); viewportResetTimer=null; }
+    var vm = document.querySelector('meta[name="viewport"]');
+    if(!vm) return;
+    // Force scale back to 1 now that Safari has the correct dimensions
+    vm.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0';
+    viewportResetTimer = setTimeout(function(){
+      vm.content = 'width=device-width, initial-scale=1.0';
+      viewportResetTimer = null;
+    }, 50);
+  }
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', onViewportResizeForRotation);
+  } else {
+    window.addEventListener('resize', onViewportResizeForRotation);
+  }
+
   window.addEventListener('orientationchange',function(){
     if(lightbox.classList.contains('active')) lightboxRotatedWhileOpen=true;
-    // iOS Safari landscape→portrait scale bug: force viewport reset on every
-    // rotation so the page doesn't get stuck at the wrong zoom level.
-    var vm=document.querySelector('meta[name="viewport"]');
-    if(vm){
-      vm.content='width=device-width, initial-scale=1.0, maximum-scale=1.0';
-      setTimeout(function(){
-        vm.content='width=device-width, initial-scale=1.0';
-      },300);
-    }
     // iOS Safari needs time to settle after orientation change
     updateCaptionHeight();
     setTimeout(updateCaptionHeight,200);
