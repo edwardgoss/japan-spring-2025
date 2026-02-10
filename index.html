@@ -835,6 +835,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   let current=0;
   let lightboxOpenCurrent=-1;
   let lightboxOpenWidth=0;
+  let lightboxOpenScrollY=0;
+  let lightboxRotatedWhileOpen=false;
   let activeFilter='All';
   let activeSearch='';
   const items=[];
@@ -1365,6 +1367,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     if(current===-1)return;
     lightboxOpenCurrent=current;
     lightboxOpenWidth=document.documentElement.clientWidth;
+    lightboxOpenScrollY=window.scrollY||0;
+    lightboxRotatedWhileOpen=false;
     openLightbox();
   });
 
@@ -1421,10 +1425,27 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     document.body.style.overflow='';
     lbImg.src='';
     lightbox.style.removeProperty('--caption-h');
+
+    // If the device rotated while the lightbox was open, iOS Safari can get
+    // stuck with a persistent zoom / scale. Reset the viewport meta tag to
+    // force it back to a clean 1:1 scale before we do anything else.
+    if(lightboxRotatedWhileOpen){
+      var vm=document.querySelector('meta[name="viewport"]');
+      if(vm){
+        vm.content='width=device-width, initial-scale=1.0, maximum-scale=1.0';
+        // One frame later, restore normal (allow-zoom) so pinch still works
+        requestAnimationFrame(function(){
+          vm.content='width=device-width, initial-scale=1.0';
+        });
+      }
+      lightboxRotatedWhileOpen=false;
+    }
+
     // Re-layout in case viewport changed while lightbox was open
     pendingLayoutAfterLightbox=false;
     scheduleLayoutAfterLightbox();
-    // Scroll to current photo if user navigated OR viewport changed (zoom)
+
+    // Scroll to current photo if user navigated OR viewport changed (orientation)
     var didNavigate=current!==lightboxOpenCurrent;
     var viewportChanged=document.documentElement.clientWidth!==lightboxOpenWidth;
     if((didNavigate||viewportChanged)&&current>=0&&current<filtered.length){
@@ -1433,6 +1454,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       var galleryTop=gallery.getBoundingClientRect().top+window.scrollY;
       var photoTop=parseFloat(el.style.top)+galleryTop;
       window.scrollTo({top:photoTop-headerH-10,behavior:'instant'});
+    } else {
+      // No navigation, no rotation — just restore exactly where we were
+      window.scrollTo({top:lightboxOpenScrollY,behavior:'instant'});
     }
   }
 
@@ -1498,6 +1522,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     window.visualViewport.addEventListener('resize',updateCaptionHeight);
   }
   window.addEventListener('orientationchange',function(){
+    // Flag if we rotated while lightbox was open (triggers viewport reset on close)
+    if(lightbox.classList.contains('active')) lightboxRotatedWhileOpen=true;
     // iOS Safari needs time to settle after orientation change
     updateCaptionHeight();
     setTimeout(updateCaptionHeight,200);
