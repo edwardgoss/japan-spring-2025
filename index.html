@@ -113,6 +113,9 @@
     color:var(--text-secondary);
     margin-top:3px;
     height:1.1em;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
     letter-spacing:.02em;
     transition:opacity .15s ease-out;
     transform:translate3d(0,0,0);
@@ -129,6 +132,9 @@
   .now-showing-filtered{
     opacity:.7;
     font-size:.6rem;
+  }
+  .now-showing-query{
+    white-space:inherit;
   }
 
   /* ── Dropdown menu ── */
@@ -592,7 +598,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   // ── City ranges ──
   const CITY_RANGES=[
     {city:'Tokyo',       ranges:[[1,23],[44,99]]},
-    {city:'Kamakura & Enoshima', ranges:[[24,43]]},
+    {city:'Kamakura',    ranges:[[24,36]]},
+    {city:'Enoshima',    ranges:[[37,43]]},
     {city:'Kyoto',       ranges:[[100,211],[217,227]]},
     {city:'Osaka',       ranges:[[212,216]]}
   ];
@@ -1281,13 +1288,21 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
   // ── "Now showing" label ──
   let lastShownKey='';
+  function escapeHTML(s){
+    return s.replace(/[&<>"']/g,function(ch){
+      if(ch==='&') return '&amp;';
+      if(ch==='<') return '&lt;';
+      if(ch==='>') return '&gt;';
+      if(ch==='"') return '&quot;';
+      return '&#39;';
+    });
+  }
   function nowShowingHTML(city){
     var html='<span class="now-showing-label">Now showing \u00b7 </span><span class="now-showing-city">'+city+'</span>';
     if(activeFilter!=='All') html+=' <span class="now-showing-filtered">\u00b7 Filtered</span>';
     if(activeSearch){
       var q=searchInput.value.trim();
-      if(q.length>20) q=q.slice(0,20)+'\u2026';
-      html+=' <span class="now-showing-filtered">\u00b7 Search: '+q+'</span>';
+      html+=' <span class="now-showing-filtered">\u00b7 Search: <span class="now-showing-query">'+escapeHTML(q)+'</span></span>';
     }
     return html;
   }
