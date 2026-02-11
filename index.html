@@ -52,15 +52,17 @@
     min-height:100vh;
     width:100%;
     overflow-x:hidden;
+    padding-top:var(--header-offset,0px);
     touch-action:manipulation;
   }
 
   /* ── Header ── */
   header{
-    position:sticky;top:0;z-index:50;
+    position:fixed;
+    top:0;left:0;right:0;z-index:50;
     background:var(--header-bg);
     backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-    padding:12px 24px 10px;
+    padding:calc(12px + env(safe-area-inset-top)) 24px 10px;
     text-align:center;
   }
 
@@ -448,7 +450,7 @@
 
   /* ── Mobile ── */
   @media(max-width:600px){
-    header{padding:10px 16px 8px}
+    header{padding:calc(10px + env(safe-area-inset-top)) 16px 8px}
     header h1{font-size:1.1rem}
     .header-byline{font-size:.6rem}
     .now-showing{font-size:.6rem;height:1em}
@@ -522,6 +524,30 @@
 
 <script>
 if('scrollRestoration' in history) history.scrollRestoration='manual';
+
+// Keep content offset in sync with fixed header height.
+(function(){
+  var headerEl=document.querySelector('header');
+  if(!headerEl) return;
+
+  function updateHeaderOffset(){
+    document.documentElement.style.setProperty('--header-offset',headerEl.offsetHeight+'px');
+  }
+
+  updateHeaderOffset();
+  window.addEventListener('resize',updateHeaderOffset);
+  window.addEventListener('orientationchange',function(){
+    setTimeout(updateHeaderOffset,320);
+  });
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize',function(){
+      setTimeout(updateHeaderOffset,80);
+    });
+  }
+  if(typeof ResizeObserver!=='undefined'){
+    new ResizeObserver(updateHeaderOffset).observe(headerEl);
+  }
+})();
 
 // Compact caption detection (JS-driven for iOS Safari reliability)
 (function(){
