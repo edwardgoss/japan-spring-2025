@@ -866,27 +866,36 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   }
   function resetCaptionClamp(){
     lbCaption.classList.remove('clamped','expanded');
-    // Remove any injected ellipsis text node
-    if(lbLocation._ellipsisNode){
-      if(lbLocation._ellipsisNode.parentNode) lbLocation._ellipsisNode.parentNode.removeChild(lbLocation._ellipsisNode);
-      lbLocation._ellipsisNode=null;
-    }
-    // Restore trimmed text node
-    if(lbLocation._origTextNode){
-      lbLocation._origTextNode.node.data=lbLocation._origTextNode.orig;
-      lbLocation._origTextNode=null;
-    }
-    // Restore hidden nodes
-    if(lbLocation._hiddenNodes){
-      lbLocation._hiddenNodes.forEach(function(n){
-        if(n.nodeType===Node.ELEMENT_NODE) n.style.display='';
-        else if(n._origData!=null){ n.data=n._origData; delete n._origData; }
+    // Restore all trimmed/hidden leaf text nodes
+    if(lbLocation._clampState){
+      lbLocation._clampState.forEach(function(item){
+        item.node.data=item.orig;
       });
-      lbLocation._hiddenNodes=null;
+      lbLocation._clampState=null;
+    }
+    // Restore hidden element nodes
+    if(lbLocation._hiddenEls){
+      lbLocation._hiddenEls.forEach(function(el){ el.style.display=''; });
+      lbLocation._hiddenEls=null;
     }
     // Ensure more button is back inside lbLocation and hidden
     if(lbMore.parentNode!==lbLocation) lbLocation.appendChild(lbMore);
     lbMore.style.display='none';
+  }
+
+  // Collect all leaf text nodes inside `root`, excluding `stopEl` subtree
+  function getLeafTextNodes(root, stopEl){
+    var result=[];
+    function walk(node){
+      if(node===stopEl) return;
+      if(node.nodeType===Node.TEXT_NODE){
+        if(node.data.trim()) result.push(node);
+      } else {
+        for(var i=0;i<node.childNodes.length;i++) walk(node.childNodes[i]);
+      }
+    }
+    walk(root);
+    return result;
   }
 
   function applyCaptionClamp(){
@@ -894,82 +903,82 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     if(!isMobilePortrait()) return;
 
     var oneLineH=parseFloat(getComputedStyle(lbLocation).lineHeight)||18;
+    var threshold=Math.round(oneLineH*1.4);
 
-    // Ensure more button is hidden for measurement
+    // Hide more button for initial check
     lbMore.style.display='none';
 
     // If already fits on one line, nothing to do
-    if(lbLocation.scrollHeight<=Math.round(oneLineH*1.4)) return;
+    if(lbLocation.scrollHeight<=threshold) return;
 
-    // Show more button inline for binary search measurement
+    // Show more button inline — it must fit on the same line
     lbMore.style.display='inline';
 
-    // Walk child nodes (excluding the more button) and binary-search
-    // the right truncation point within the text nodes
-    var nodes=Array.from(lbLocation.childNodes).filter(function(n){ return n!==lbMore; });
+    // Collect all leaf text nodes (in document order) inside lbLocation,
+    // skipping the lbMore subtree
+    var leafNodes=getLeafTextNodes(lbLocation, lbMore);
 
-    // Collect all text content with node references for precise truncation
-    // Strategy: hide trailing nodes until it fits, then trim the last visible text node
-    var hiddenNodes=[];
+    var savedStates=[]; // {node, orig} for all nodes we've touched
+    var hiddenEls=[];   // element nodes we've fully hidden
 
-    // First try hiding whole nodes from the end
-    for(var i=nodes.length-1;i>=0;i--){
-      if(lbLocation.scrollHeight<=Math.round(oneLineH*1.4)) break;
-      var node=nodes[i];
-      if(node.nodeType===Node.ELEMENT_NODE) node.style.display='none';
-      else node._origData=node.data; // text node
-      hiddenNodes.unshift(node);
-    }
+    // Work from the last leaf text node backwards
+    // Save original data for each as we go
+    for(var i=leafNodes.length-1;i>=0;i--){
+      if(lbLocation.scrollHeight<=threshold) break;
 
-    // Now we may still be over; trim the last visible text node
-    var lastVisible=null;
-    for(var j=0;j<nodes.length;j++){
-      if(hiddenNodes.indexOf(nodes[j])===-1) lastVisible=nodes[j];
-    }
+      var textNode=leafNodes[i];
+      var orig=textNode.data;
+      savedStates.unshift({node:textNode, orig:orig});
 
-    var ellipsisNode=document.createTextNode('\u2026');
-    if(lastVisible && lastVisible.nodeType===Node.TEXT_NODE){
-      var orig=lastVisible.data;
-      // Binary search trim
-      var lo=0,hi=orig.length,best=0;
+      // Binary search: find the longest prefix of this text node that fits
+      var lo=0, hi=orig.length, best=-1;
       while(lo<=hi){
         var mid=Math.floor((lo+hi)/2);
-        lastVisible.data=orig.slice(0,mid)+'\u2026';
-        if(lbLocation.scrollHeight<=Math.round(oneLineH*1.4)){best=mid;lo=mid+1;}
+        textNode.data=orig.slice(0,mid);
+        if(lbLocation.scrollHeight<=threshold){ best=mid; lo=mid+1; }
         else hi=mid-1;
       }
-      lastVisible.data=orig.slice(0,best)+'\u2026';
-      lbLocation._ellipsisNode=null; // already embedded in text node
-      lbLocation._origTextNode={node:lastVisible,orig:orig};
-    } else {
-      // Insert ellipsis text node before the more button
-      lbLocation.insertBefore(ellipsisNode,lbMore);
-      lbLocation._ellipsisNode=ellipsisNode;
+
+      if(best<0){
+        // Even empty string doesn't fit — blank this node and try prev
+        textNode.data='';
+      } else {
+        // Trim to `best` chars — strip trailing space/dash/whitespace for cleanliness
+        var trimmed=orig.slice(0,best).replace(/[\s\u2014\-]+$/,'');
+        textNode.data=trimmed;
+        break; // fits now
+      }
     }
 
-    lbLocation._hiddenNodes=hiddenNodes;
+    // If still overflowing after emptying all text nodes, hide whole element children
+    // from the end of lbLocation (shouldn't normally be needed)
+    if(lbLocation.scrollHeight>threshold){
+      var topChildren=Array.from(lbLocation.childNodes).filter(function(n){ return n!==lbMore; });
+      for(var k=topChildren.length-1;k>=0;k--){
+        if(lbLocation.scrollHeight<=threshold) break;
+        if(topChildren[k].nodeType===Node.ELEMENT_NODE){
+          topChildren[k].style.display='none';
+          hiddenEls.push(topChildren[k]);
+        }
+      }
+    }
+
+    lbLocation._clampState=savedStates;
+    lbLocation._hiddenEls=hiddenEls.length ? hiddenEls : null;
     lbCaption.classList.add('clamped');
   }
 
   lbMore.addEventListener('click',function(e){
     e.stopPropagation();
-    // Restore hidden nodes
-    if(lbLocation._hiddenNodes){
-      lbLocation._hiddenNodes.forEach(function(n){
-        if(n.nodeType===Node.ELEMENT_NODE) n.style.display='';
-        else if(n._origData!=null){ n.data=n._origData; delete n._origData; }
-      });
-      lbLocation._hiddenNodes=null;
+    // Restore all trimmed text nodes
+    if(lbLocation._clampState){
+      lbLocation._clampState.forEach(function(item){ item.node.data=item.orig; });
+      lbLocation._clampState=null;
     }
-    // Restore trimmed text node
-    if(lbLocation._origTextNode){
-      lbLocation._origTextNode.node.data=lbLocation._origTextNode.orig;
-      lbLocation._origTextNode=null;
-    }
-    // Remove ellipsis node if separate
-    if(lbLocation._ellipsisNode){
-      if(lbLocation._ellipsisNode.parentNode) lbLocation._ellipsisNode.parentNode.removeChild(lbLocation._ellipsisNode);
-      lbLocation._ellipsisNode=null;
+    // Restore any hidden element nodes
+    if(lbLocation._hiddenEls){
+      lbLocation._hiddenEls.forEach(function(el){ el.style.display=''; });
+      lbLocation._hiddenEls=null;
     }
     lbMore.style.display='none';
     lbCaption.classList.remove('clamped');
