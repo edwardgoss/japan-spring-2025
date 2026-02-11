@@ -378,6 +378,9 @@
   .lightbox-sep{opacity:.45;margin:0 2px}
 
   /* ── Caption truncation (mobile portrait only) ── */
+  .lightbox-location-wrap{
+    display:block;
+  }
   .lightbox-more{
     display:none;
     background:none;border:none;padding:0;
@@ -386,22 +389,25 @@
     color:rgba(255,255,255,.38);
     cursor:pointer;
     letter-spacing:.02em;
-    line-height:1.5;
-    margin-top:1px;
+    line-height:1.45;
     -webkit-tap-highlight-color:transparent;
+    vertical-align:baseline;
   }
-  /* When clamped: location truncates to 1 line, more button shown below */
-  .lightbox-caption.clamped .lightbox-location{
+  @media(max-width:600px){
+    .lightbox-more{font-size:.7rem}
+  }
+  /* When clamped: wrap becomes single-line truncated block, button inline after */
+  .lightbox-caption.clamped .lightbox-location-wrap{
     display:-webkit-box;
     -webkit-line-clamp:1;
     -webkit-box-orient:vertical;
     overflow:hidden;
   }
   .lightbox-caption.clamped .lightbox-more{
-    display:block;
+    display:inline;
   }
-  /* Expanded: remove clamp, hide button */
-  .lightbox-caption.expanded .lightbox-location{
+  /* Expanded: full text, hide button */
+  .lightbox-caption.expanded .lightbox-location-wrap{
     display:block;
     overflow:visible;
   }
@@ -524,11 +530,13 @@
   <div class="lightbox-spinner"></div>
   <img src="" alt="">
   <div class="lightbox-caption">
-    <div class="lightbox-location">
-      <span class="lightbox-city"></span>
-      <span class="lightbox-place"></span>
+    <div class="lightbox-location-wrap">
+      <div class="lightbox-location">
+        <span class="lightbox-city"></span>
+        <span class="lightbox-place"></span>
+      </div>
+      <button class="lightbox-more" id="lbMore" aria-label="Show full caption">more</button>
     </div>
-    <button class="lightbox-more" id="lbMore" aria-label="Show full caption">&hellip; more</button>
     <div class="lightbox-counter"></div>
   </div>
 </div>
@@ -864,6 +872,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const lbCaption=lightbox.querySelector('.lightbox-caption');
   const lbMore=document.getElementById('lbMore');
   const lbLocation=lightbox.querySelector('.lightbox-location');
+  const lbLocationWrap=lightbox.querySelector('.lightbox-location-wrap');
 
   function updateCaptionHeight(){
     if(!lightbox.classList.contains('active')) return;
@@ -881,21 +890,16 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   function applyCaptionClamp(){
     resetCaptionClamp();
     if(!isMobilePortrait()) return;
-    // Temporarily unclamped to measure true height
-    lbLocation.style.display='block';
-    lbLocation.style.overflow='visible';
-    var fullH=lbLocation.scrollHeight;
-    lbLocation.style.display='';
-    lbLocation.style.overflow='';
-    // Apply -webkit-line-clamp:2 and measure clamped height
+    // Measure true (unclamped) height of the wrap
+    var fullH=lbLocationWrap.scrollHeight;
+    // Apply clamped state and measure clamped height
     lbCaption.classList.add('clamped');
-    var clampedH=lbLocation.offsetHeight;
-    // If full height exceeds clamped height, overflow exists — keep clamped
+    var clampedH=lbLocationWrap.offsetHeight;
+    // If it fits in one line, no button needed
     if(fullH<=clampedH+2){
-      // Fits in 2 lines — no need for the button
       resetCaptionClamp();
     }
-    // else: stays clamped with … more visible
+    // else: stays clamped with 'more' visible inline after the ellipsis
   }
   lbMore.addEventListener('click',function(e){
     e.stopPropagation();
