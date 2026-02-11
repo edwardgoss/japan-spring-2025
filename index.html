@@ -520,6 +520,82 @@
 <script>
 if('scrollRestoration' in history) history.scrollRestoration='manual';
 
+// iPad Safari orientation scale recovery
+(function(){
+  var ua=navigator.userAgent||'';
+  var platform=navigator.platform||'';
+  var isIpad=/iPad/.test(ua)||(platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  var isSafari=/Safari/.test(ua)&&!/CriOS|FxiOS|EdgiOS|OPiOS|DuckDuckGo|YaBrowser|Chrome|Chromium/i.test(ua);
+  var vv=window.visualViewport;
+  if(!isIpad||!isSafari||!vv) return;
+
+  var viewportMeta=document.querySelector('meta[name="viewport"]');
+  if(!viewportMeta) return;
+
+  var originalViewport=viewportMeta.getAttribute('content')||'width=device-width, initial-scale=1';
+  var lockedViewport=buildLockedViewport(originalViewport);
+  var restoring=false;
+  var orientationWindowUntil=0;
+  var resizeAuditTimer=null;
+
+  function buildLockedViewport(content){
+    var tokens=content.split(',').map(function(token){ return token.trim(); }).filter(Boolean);
+    tokens=tokens.filter(function(token){
+      return !/^(?:initial-scale|minimum-scale|maximum-scale|user-scalable)\s*=/i.test(token);
+    });
+    tokens.push('initial-scale=1');
+    tokens.push('maximum-scale=1');
+    return tokens.join(', ');
+  }
+
+  function isScaleOff(){
+    var scale=vv.scale;
+    if(typeof scale==='number'&&isFinite(scale)&&Math.abs(scale-1)>0.02) return true;
+    var docWidth=document.documentElement.clientWidth;
+    var vvWidth=vv.width;
+    if(docWidth>0&&vvWidth>0){
+      var derived=docWidth/vvWidth;
+      if(Math.abs(derived-1)>0.03) return true;
+    }
+    return false;
+  }
+
+  function restoreViewportSoon(){
+    setTimeout(function(){
+      viewportMeta.setAttribute('content',originalViewport);
+      restoring=false;
+    },140);
+  }
+
+  function forceViewportRecalc(){
+    if(restoring) return;
+    restoring=true;
+    viewportMeta.setAttribute('content',lockedViewport);
+    void document.documentElement.offsetWidth;
+    restoreViewportSoon();
+  }
+
+  function auditAndFix(){
+    if(isScaleOff()) forceViewportRecalc();
+  }
+
+  function queueResizeAudit(){
+    if(Date.now()>orientationWindowUntil) return;
+    clearTimeout(resizeAuditTimer);
+    resizeAuditTimer=setTimeout(auditAndFix,160);
+  }
+
+  window.addEventListener('orientationchange',function(){
+    orientationWindowUntil=Date.now()+1500;
+    setTimeout(auditAndFix,80);
+    setTimeout(auditAndFix,260);
+    setTimeout(auditAndFix,520);
+    setTimeout(auditAndFix,900);
+  });
+  window.addEventListener('resize',queueResizeAudit);
+  vv.addEventListener('resize',queueResizeAudit);
+})();
+
 // Compact caption detection (JS-driven for iOS Safari reliability)
 (function(){
   function getViewport(){
