@@ -377,6 +377,40 @@
   }
   .lightbox-sep{opacity:.45;margin:0 2px}
 
+  /* ── Caption truncation (mobile portrait only) ── */
+  .lightbox-more{
+    display:none; /* hidden by default; JS shows when needed */
+    background:none;border:none;padding:0;
+    font-family:'Libre Baskerville',Georgia,'Times New Roman',serif;
+    font-size:.85rem;
+    color:rgba(255,255,255,.4);
+    cursor:pointer;
+    letter-spacing:.02em;
+    line-height:1.5;
+    -webkit-tap-highlight-color:transparent;
+  }
+  @media(max-width:600px){
+    .lightbox-more{font-size:.75rem}
+  }
+  /* When clamped: location truncates to 2 lines and more button appears inline */
+  .lightbox-caption.clamped .lightbox-location{
+    display:-webkit-box;
+    -webkit-line-clamp:1;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+  }
+  .lightbox-caption.clamped .lightbox-more{
+    display:inline;
+  }
+  /* Expanded: remove clamp, hide button */
+  .lightbox-caption.expanded .lightbox-location{
+    display:block;
+    overflow:visible;
+  }
+  .lightbox-caption.expanded .lightbox-more{
+    display:none;
+  }
+
   .lightbox-spinner{
     position:absolute;
     width:36px;height:36px;
@@ -495,6 +529,7 @@
     <div class="lightbox-location">
       <span class="lightbox-city"></span>
       <span class="lightbox-place"></span>
+      <button class="lightbox-more" id="lbMore" aria-label="Show full caption">&thinsp;&hellip; more</button>
     </div>
     <div class="lightbox-counter"></div>
   </div>
@@ -829,12 +864,47 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const lbPlace=lightbox.querySelector('.lightbox-place');
   const lbCounter=lightbox.querySelector('.lightbox-counter');
   const lbCaption=lightbox.querySelector('.lightbox-caption');
+  const lbMore=document.getElementById('lbMore');
+  const lbLocation=lightbox.querySelector('.lightbox-location');
 
   function updateCaptionHeight(){
     if(!lightbox.classList.contains('active')) return;
     var h=lbCaption.offsetHeight||80;
     lightbox.style.setProperty('--caption-h',h+'px');
   }
+
+  // ── Caption truncation (mobile portrait only) ──
+  function isMobilePortrait(){
+    return window.matchMedia('(max-width:600px) and (orientation:portrait)').matches;
+  }
+  function resetCaptionClamp(){
+    lbCaption.classList.remove('clamped','expanded');
+  }
+  function applyCaptionClamp(){
+    resetCaptionClamp();
+    if(!isMobilePortrait()) return;
+    // Temporarily unclamped to measure true height
+    lbLocation.style.display='block';
+    lbLocation.style.overflow='visible';
+    var fullH=lbLocation.scrollHeight;
+    lbLocation.style.display='';
+    lbLocation.style.overflow='';
+    // Apply -webkit-line-clamp:2 and measure clamped height
+    lbCaption.classList.add('clamped');
+    var clampedH=lbLocation.offsetHeight;
+    // If full height exceeds clamped height, overflow exists — keep clamped
+    if(fullH<=clampedH+2){
+      // Fits in 2 lines — no need for the button
+      resetCaptionClamp();
+    }
+    // else: stays clamped with … more visible
+  }
+  lbMore.addEventListener('click',function(e){
+    e.stopPropagation();
+    lbCaption.classList.remove('clamped');
+    lbCaption.classList.add('expanded');
+    requestAnimationFrame(updateCaptionHeight);
+  });
 
   const nowShowingEl=document.getElementById('nowShowing');
   const menuBtn=document.getElementById('menuBtn');
@@ -1420,8 +1490,12 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     // Re-check compact caption state on open
     if(window._updateCompactCaption) window._updateCompactCaption();
 
-    // Measure caption height so image fits above it
-    requestAnimationFrame(updateCaptionHeight);
+    // Measure caption height so image fits above it, then check truncation
+    requestAnimationFrame(function(){
+      updateCaptionHeight();
+      applyCaptionClamp();
+      updateCaptionHeight(); // re-measure after clamp may have changed height
+    });
 
     // Preload adjacent full-res images for snappy navigation
     if(current+1<filtered.length) new Image().src=photoSrc(filtered[current+1]);
@@ -1434,6 +1508,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     document.body.style.overflow='';
     lbImg.src='';
     lightbox.style.removeProperty('--caption-h');
+    resetCaptionClamp();
 
     lightboxRotatedWhileOpen=false;
 
