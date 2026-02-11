@@ -62,7 +62,7 @@
     top:0;left:0;right:0;z-index:50;
     background:var(--header-bg);
     backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-    padding:calc(12px + env(safe-area-inset-top)) 24px 10px;
+    padding:calc(11px + env(safe-area-inset-top)) 24px 9px;
     text-align:center;
   }
 
@@ -98,11 +98,11 @@
     right:0;top:50%;transform:translateY(-50%);
     background:none;border:none;
     color:var(--text);
-    font-size:1.2rem;
+    font-size:1.3rem;
     cursor:pointer;
     opacity:.5;
     transition:opacity .2s;
-    padding:4px 2px;
+    padding:6px 4px;
     line-height:1;
   }
   .menu-btn:hover{opacity:.8}
@@ -151,7 +151,8 @@
     background:var(--menu-bg);
     border-radius:8px;
     box-shadow:var(--menu-shadow);
-    min-width:200px;
+    width:240px;
+    max-width:calc(100vw - 32px);
     padding:6px 0;
     z-index:51;
     opacity:0;
@@ -205,7 +206,7 @@
   }
   .menu-search input{
     width:100%;
-    padding:7px 26px 7px 10px;
+    padding:7px 36px 7px 10px;
     border:1px solid var(--menu-border);
     border-radius:5px;
     background:transparent;
@@ -222,12 +223,12 @@
     transform:translateY(-70%);
     background:none;border:none;
     color:var(--text-secondary);
-    font-size:.75rem;
+    font-size:.7rem;
     cursor:pointer;
     opacity:0;
     pointer-events:none;
     transition:opacity .15s;
-    padding:2px 4px;
+    padding:2px 5px;
     line-height:1;
   }
   .menu-search-clear.visible{
@@ -457,14 +458,14 @@
 
   /* ── Mobile ── */
   @media(max-width:600px){
-    header{padding:calc(10px + env(safe-area-inset-top)) 16px 8px}
+    header{padding:calc(9px + env(safe-area-inset-top)) 16px 7px}
     header h1{font-size:1.1rem}
     .header-byline{font-size:.6rem}
     .now-showing{font-size:.6rem;line-height:1.25;min-height:1.25em}
-    .menu-btn{font-size:1.1rem}
-    .menu-dropdown{right:16px;min-width:180px}
+    .menu-btn{font-size:1.2rem}
+    .menu-dropdown{right:16px;width:220px;max-width:calc(100vw - 32px)}
     .menu-item{padding:8px 14px;font-size:.7rem}
-    .menu-search input{font-size:.65rem;padding:6px 9px}
+    .menu-search input{font-size:.6rem;padding:6px 34px 6px 9px}
     .menu-search-hint{font-size:.5rem}
     .lightbox-location{font-size:.75rem;line-height:1.45}
     .lightbox-caption{padding:24px 16px 14px}
@@ -490,9 +491,9 @@
     margin-top:1px;
   }
 
-  @media (max-width: 768px){
-    /* iOS Safari zoom prevention: inputs must be >=16px */
-    .menu-search input{font-size:16px;}
+  @media (max-width: 600px) and (hover: none) and (pointer: coarse){
+    /* Keep touch input text legible while avoiding oversized menu text */
+    .menu-search input{font-size:15px;}
   }
 
 </style>
@@ -1060,6 +1061,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const menuBtn=document.getElementById('menuBtn');
   const menuDropdown=document.getElementById('menuDropdown');
   const menuOverlay=document.getElementById('menuOverlay');
+  const headerEl=document.querySelector('header');
 
   let current=0;
   let lightboxOpenCurrent=-1;
@@ -1187,7 +1189,18 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     menuDropdown.appendChild(btn);
   });
 
+  function positionMenuDropdown(){
+    if(!headerEl) return;
+    var headerRect=headerEl.getBoundingClientRect();
+    var btnRect=menuBtn.getBoundingClientRect();
+    var top=Math.max(0,(btnRect.bottom-headerRect.top)+8);
+    var right=Math.max(0,headerRect.right-btnRect.right);
+    menuDropdown.style.top=top+'px';
+    menuDropdown.style.right=right+'px';
+  }
+
   function openMenu(){
+    positionMenuDropdown();
     menuOpen=true;
     menuDropdown.classList.add('open');
     menuOverlay.classList.add('open');
@@ -1217,6 +1230,18 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     if(menuOpen) closeMenu(); else openMenu();
   });
   menuOverlay.addEventListener('click',closeMenu);
+  window.addEventListener('resize',function(){
+    if(menuOpen) positionMenuDropdown();
+  });
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize',function(){
+      if(menuOpen) positionMenuDropdown();
+    });
+  }
+  window.addEventListener('orientationchange',function(){
+    if(!menuOpen) return;
+    setTimeout(positionMenuDropdown,300);
+  });
 
   // Header title: scroll to top (does not interfere with hamburger button)
   var titleTap=document.getElementById('titleTap');
