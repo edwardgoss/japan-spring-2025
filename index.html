@@ -944,7 +944,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
         textNode.data='';
       } else {
         // Trim to `best` chars — strip trailing space/dash/whitespace, then add ellipsis
-        var trimmed=orig.slice(0,best).replace(/[\s\u2014\-]+$/,'');
+        var trimmed=orig.slice(0,best).replace(/[\s\u2014\-\(\uff08\u300c\u300e]+$/,'');
         textNode.data=trimmed+'\u2026';
         break; // fits now
       }
