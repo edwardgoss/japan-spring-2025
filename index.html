@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<!-- Keep shrink-to-fit disabled to prevent iPad Safari portrait auto-shrink after rotation. -->
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, shrink-to-fit=no">
 <title>Japan Spring 2025</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -43,11 +44,6 @@
     -webkit-text-size-adjust:100%;
     text-size-adjust:100%;
     overflow-x:hidden;
-  }
-  html.ipad-safari-stable-text,
-  html.ipad-safari-stable-text body{
-    -webkit-text-size-adjust:none !important;
-    text-size-adjust:none !important;
   }
   body{
     background:var(--bg);
@@ -527,174 +523,6 @@
 <script>
 if('scrollRestoration' in history) history.scrollRestoration='manual';
 
-// iPad Safari orientation scale recovery
-(function(){
-  var ua=navigator.userAgent||'';
-  var platform=navigator.platform||'';
-  var isIpad=/iPad/.test(ua)||(platform==='MacIntel'&&navigator.maxTouchPoints>1);
-  var isSafari=/Safari/.test(ua)&&!/CriOS|FxiOS|EdgiOS|OPiOS|DuckDuckGo|YaBrowser|Chrome|Chromium/i.test(ua);
-  if(!isIpad||!isSafari) return;
-
-  var root=document.documentElement;
-  root.classList.add('ipad-safari-stable-text');
-
-  var viewportMeta=document.querySelector('meta[name="viewport"]');
-  if(!viewportMeta) return;
-
-  var originalViewport=viewportMeta.getAttribute('content')||'width=device-width, initial-scale=1, viewport-fit=cover';
-  var normalViewport=buildViewport(originalViewport,false);
-  var resetViewport=buildViewport(originalViewport,true);
-  var fixInFlight=false;
-  var orientationWindowUntil=0;
-  var resizeAuditTimer=null;
-  var vv=window.visualViewport;
-
-  function buildViewport(content,resetMode){
-    var tokens=content.split(',').map(function(token){ return token.trim(); }).filter(Boolean);
-    var hasViewportFit=false;
-    var hasShrinkToFit=false;
-    tokens=tokens.filter(function(token){
-      if(/^viewport-fit\s*=/i.test(token)) hasViewportFit=true;
-      if(/^shrink-to-fit\s*=/i.test(token)) hasShrinkToFit=true;
-      return !/^(?:width|height|initial-scale|minimum-scale|maximum-scale|user-scalable)\s*=/i.test(token);
-    });
-    tokens.unshift('height=device-height');
-    tokens.unshift('width=device-width');
-    tokens.push('initial-scale=1');
-    tokens.push('minimum-scale=1');
-    if(resetMode){
-      tokens.push('maximum-scale=1');
-      tokens.push('user-scalable=no');
-    }else{
-      tokens.push('user-scalable=yes');
-    }
-    if(!hasViewportFit) tokens.push('viewport-fit=cover');
-    if(!hasShrinkToFit) tokens.push('shrink-to-fit=no');
-    return tokens.join(', ');
-  }
-
-  function physicalPortrait(){
-    if(window.screen&&window.screen.orientation&&typeof window.screen.orientation.type==='string'){
-      return window.screen.orientation.type.indexOf('portrait')===0;
-    }
-    if(typeof window.orientation==='number'){
-      return Math.abs(window.orientation)!==90;
-    }
-    return window.matchMedia('(orientation:portrait)').matches;
-  }
-
-  function expectedOrientationWidth(){
-    if(window.screen){
-      var sw=window.screen.width||0;
-      var sh=window.screen.height||0;
-      if(sw>0&&sh>0){
-        var shortSide=Math.min(sw,sh);
-        var longSide=Math.max(sw,sh);
-        return physicalPortrait()?shortSide:longSide;
-      }
-    }
-    if(vv){
-      var vw=vv.width||0;
-      var vh=vv.height||0;
-      if(vw>0&&vh>0){
-        var vvShort=Math.min(vw,vh);
-        var vvLong=Math.max(vw,vh);
-        return physicalPortrait()?vvShort:vvLong;
-      }
-    }
-    var iw=window.innerWidth||0;
-    var ih=window.innerHeight||0;
-    if(iw>0&&ih>0){
-      var innerShort=Math.min(iw,ih);
-      var innerLong=Math.max(iw,ih);
-      return physicalPortrait()?innerShort:innerLong;
-    }
-    return 0;
-  }
-
-  function hasOrientationViewportDrift(){
-    var portrait=physicalPortrait();
-
-    var innerW=window.innerWidth||0;
-    var innerH=window.innerHeight||0;
-    var docW=root.clientWidth||0;
-    var vvW=vv?vv.width:0;
-    var expectedW=expectedOrientationWidth();
-
-    // Physical and layout orientations disagree
-    if(innerW>0&&innerH>0){
-      if(portrait&&innerW>innerH*1.02) return true;
-      if(!portrait&&innerH>innerW*1.02) return true;
-    }
-
-    // Layout viewport width should track expected hardware-side width for this orientation.
-    if(expectedW>0&&docW>0&&Math.abs((docW/expectedW)-1)>0.04) return true;
-
-    // Ignore active pinch zoom when evaluating visualViewport width.
-    var vvScale=(vv&&typeof vv.scale==='number'&&isFinite(vv.scale))?vv.scale:1;
-    if(expectedW>0&&vvW>0&&Math.abs(vvScale-1)<0.03&&Math.abs((vvW/expectedW)-1)>0.06) return true;
-    return false;
-  }
-
-  function forceViewportReset(){
-    if(fixInFlight) return;
-    fixInFlight=true;
-    var y=window.pageYOffset||0;
-    viewportMeta.setAttribute('content',resetViewport);
-    void root.offsetWidth;
-    setTimeout(function(){
-      viewportMeta.setAttribute('content',normalViewport);
-      void root.offsetWidth;
-      window.scrollTo(0,Math.max(0,y-1));
-      window.scrollTo(0,y);
-      fixInFlight=false;
-    },160);
-  }
-
-  function auditViewport(force){
-    if(force||hasOrientationViewportDrift()){
-      forceViewportReset();
-    }
-  }
-
-  function queueResizeAudit(){
-    clearTimeout(resizeAuditTimer);
-    resizeAuditTimer=setTimeout(function(){
-      if(Date.now()<=orientationWindowUntil||hasOrientationViewportDrift()){
-        auditViewport(false);
-      }
-    },130);
-  }
-
-  function scheduleRepairBurst(forceFirstPasses){
-    // First passes can be forced to recover cases where Safari metrics look "normal" but rendering is not.
-    [50,140,260,420,700,1050,1500,2200,3200,4300].forEach(function(delay,index){
-      setTimeout(function(){
-        auditViewport(!!forceFirstPasses&&index<2);
-      },delay);
-    });
-  }
-
-  window.addEventListener('orientationchange',function(){
-    orientationWindowUntil=Date.now()+5200;
-    scheduleRepairBurst(true);
-  });
-  window.addEventListener('resize',queueResizeAudit);
-  if(vv) vv.addEventListener('resize',queueResizeAudit);
-  if(window.screen&&window.screen.orientation&&window.screen.orientation.addEventListener){
-    window.screen.orientation.addEventListener('change',function(){
-      orientationWindowUntil=Date.now()+5200;
-      scheduleRepairBurst(true);
-    });
-  }
-
-  viewportMeta.setAttribute('content',normalViewport);
-
-  // Handle initial load in either orientation (especially if first paint is landscape).
-  orientationWindowUntil=Date.now()+3000;
-  scheduleRepairBurst(!physicalPortrait());
-})();
-
 // Compact caption detection (JS-driven for iOS Safari reliability)
 (function(){
   function getViewport(){
@@ -734,11 +562,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 (function(){
   const TOTAL=227;
   const GAP=6;
-  const UA=navigator.userAgent||'';
-  const PLATFORM=navigator.platform||'';
-  const IS_IPAD=/iPad/.test(UA)||(PLATFORM==='MacIntel'&&navigator.maxTouchPoints>1);
-  const IS_SAFARI=/Safari/.test(UA)&&!/CriOS|FxiOS|EdgiOS|OPiOS|DuckDuckGo|YaBrowser|Chrome|Chromium/i.test(UA);
-  const IS_IPAD_SAFARI=IS_IPAD&&IS_SAFARI;
 
   // ── City ranges ──
   const CITY_RANGES=[
@@ -1571,7 +1394,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   updateFiltered();
 
   // ── Masonry layout ──
-  let lastColCount=3;
   function layout(){
     const cols=getColCount();
     const containerW=gallery.clientWidth;
@@ -1599,21 +1421,10 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
   function getColCount(){
     const w=gallery.clientWidth;
-    let next=4;
-    if(w<=480)next=1;
-    else if(w<=800)next=2;
-    else if(w<=1200)next=3;
-
-    // iPad Safari can briefly report a wider width during orientation settle.
-    // Preventing transient 4-column flips avoids right-edge overflow flashes.
-    if(IS_IPAD_SAFARI&&next===4) next=3;
-
-    // Small hysteresis around the 1200px boundary to avoid jitter/flicker.
-    if(lastColCount===3&&next===4&&w<1240) next=3;
-    if(lastColCount===4&&next===3&&w>1160) next=4;
-
-    lastColCount=next;
-    return next;
+    if(w<=480)return 1;
+    if(w<=800)return 2;
+    if(w<=1200)return 3;
+    return 4;
   }
 
   // ── Batched layout scheduling ──
@@ -1673,7 +1484,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     clearTimeout(resizeTimer);
     resizeTimer=setTimeout(layout,100);
   });
-  if(window.visualViewport&&!IS_IPAD_SAFARI){
+  if(window.visualViewport){
     window.visualViewport.addEventListener('resize',function(){
       if(lightbox.classList.contains('active')){
         pendingLayoutAfterLightbox=true;
