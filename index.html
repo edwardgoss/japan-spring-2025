@@ -930,22 +930,22 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       var orig=textNode.data;
       savedStates.unshift({node:textNode, orig:orig});
 
-      // Binary search: find the longest prefix of this text node that fits
+      // Binary search: find the longest prefix + ellipsis that fits on one line
       var lo=0, hi=orig.length, best=-1;
       while(lo<=hi){
         var mid=Math.floor((lo+hi)/2);
-        textNode.data=orig.slice(0,mid);
+        textNode.data=orig.slice(0,mid)+'\u2026';
         if(lbLocation.scrollHeight<=threshold){ best=mid; lo=mid+1; }
         else hi=mid-1;
       }
 
       if(best<0){
-        // Even empty string doesn't fit — blank this node and try prev
+        // Even just the ellipsis doesn't fit — blank this node and try prev
         textNode.data='';
       } else {
-        // Trim to `best` chars — strip trailing space/dash/whitespace for cleanliness
+        // Trim to `best` chars — strip trailing space/dash/whitespace, then add ellipsis
         var trimmed=orig.slice(0,best).replace(/[\s\u2014\-]+$/,'');
-        textNode.data=trimmed;
+        textNode.data=trimmed+'\u2026';
         break; // fits now
       }
     }
