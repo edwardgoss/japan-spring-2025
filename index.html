@@ -552,8 +552,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     var hasViewportFit=false;
     tokens=tokens.filter(function(token){
       if(/^viewport-fit\s*=/i.test(token)) hasViewportFit=true;
-      return !/^(?:width|initial-scale|minimum-scale|maximum-scale|user-scalable)\s*=/i.test(token);
+      return !/^(?:width|height|initial-scale|minimum-scale|maximum-scale|user-scalable)\s*=/i.test(token);
     });
+    tokens.unshift('height=device-height');
     tokens.unshift('width=device-width');
     tokens.push('initial-scale=1');
     if(resetMode){
@@ -567,8 +568,67 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     return tokens.join(', ');
   }
 
-  function inPortrait(){
+  function physicalPortrait(){
+    if(window.screen&&window.screen.orientation&&typeof window.screen.orientation.type==='string'){
+      return window.screen.orientation.type.indexOf('portrait')===0;
+    }
+    if(typeof window.orientation==='number'){
+      return Math.abs(window.orientation)!==90;
+    }
     return window.matchMedia('(orientation:portrait)').matches;
+  }
+
+  function expectedOrientationWidth(){
+    if(window.screen){
+      var sw=window.screen.width||0;
+      var sh=window.screen.height||0;
+      if(sw>0&&sh>0){
+        var shortSide=Math.min(sw,sh);
+        var longSide=Math.max(sw,sh);
+        return physicalPortrait()?shortSide:longSide;
+      }
+    }
+    if(vv){
+      var vw=vv.width||0;
+      var vh=vv.height||0;
+      if(vw>0&&vh>0){
+        var vvShort=Math.min(vw,vh);
+        var vvLong=Math.max(vw,vh);
+        return physicalPortrait()?vvShort:vvLong;
+      }
+    }
+    var iw=window.innerWidth||0;
+    var ih=window.innerHeight||0;
+    if(iw>0&&ih>0){
+      var innerShort=Math.min(iw,ih);
+      var innerLong=Math.max(iw,ih);
+      return physicalPortrait()?innerShort:innerLong;
+    }
+    return 0;
+  }
+
+  function hasOrientationViewportDrift(){
+    var portrait=physicalPortrait();
+
+    var innerW=window.innerWidth||0;
+    var innerH=window.innerHeight||0;
+    var docW=root.clientWidth||0;
+    var vvW=vv?vv.width:0;
+    var expectedW=expectedOrientationWidth();
+
+    // Physical and layout orientations disagree
+    if(innerW>0&&innerH>0){
+      if(portrait&&innerW>innerH*1.02) return true;
+      if(!portrait&&innerH>innerW*1.02) return true;
+    }
+
+    // Layout viewport width should track expected hardware-side width for this orientation.
+    if(expectedW>0&&docW>0&&Math.abs((docW/expectedW)-1)>0.04) return true;
+
+    // Ignore active pinch zoom when evaluating visualViewport width.
+    var vvScale=(vv&&typeof vv.scale==='number'&&isFinite(vv.scale))?vv.scale:1;
+    if(expectedW>0&&vvW>0&&Math.abs(vvScale-1)<0.03&&Math.abs((vvW/expectedW)-1)>0.06) return true;
+    return false;
   }
 
   function forceViewportReset(){
@@ -580,52 +640,54 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     setTimeout(function(){
       viewportMeta.setAttribute('content',normalViewport);
       void root.offsetWidth;
-      // Nudge scroll to force Safari to repaint at correct scale.
       window.scrollTo(0,Math.max(0,y-1));
       window.scrollTo(0,y);
       fixInFlight=false;
-    },140);
-  }
-
-  function hasPortraitScaleDrift(){
-    if(!inPortrait()) return false;
-    if(vv&&typeof vv.scale==='number'&&isFinite(vv.scale)&&Math.abs(vv.scale-1)>0.01) return true;
-
-    var shortSide=window.screen?Math.min(window.screen.width,window.screen.height):0;
-    var innerW=window.innerWidth||0;
-    var vvW=vv?vv.width:0;
-    var docW=root.clientWidth||0;
-    var widest=Math.max(innerW,vvW,docW);
-
-    if(shortSide>0&&widest>shortSide*1.05) return true;
-    if(docW>0&&vvW>0&&Math.abs((docW/vvW)-1)>0.02) return true;
-    return false;
-  }
-
-  function queueResizeAudit(){
-    if(Date.now()>orientationWindowUntil) return;
-    clearTimeout(resizeAuditTimer);
-    resizeAuditTimer=setTimeout(function(){
-      if(hasPortraitScaleDrift()) forceViewportReset();
     },160);
   }
 
-  function schedulePortraitFixes(){
-    [70,260,560,980,1400].forEach(function(delay){
+  function auditViewport(force){
+    if(force||hasOrientationViewportDrift()){
+      forceViewportReset();
+    }
+  }
+
+  function queueResizeAudit(){
+    clearTimeout(resizeAuditTimer);
+    resizeAuditTimer=setTimeout(function(){
+      if(Date.now()<=orientationWindowUntil||hasOrientationViewportDrift()){
+        auditViewport(false);
+      }
+    },130);
+  }
+
+  function scheduleRepairBurst(forceFirstPasses){
+    // First passes can be forced to recover cases where Safari metrics look "normal" but rendering is not.
+    [50,140,260,420,700,1050,1500,2200,3200,4300].forEach(function(delay,index){
       setTimeout(function(){
-        if(inPortrait()) forceViewportReset();
+        auditViewport(!!forceFirstPasses&&index<2);
       },delay);
     });
   }
 
   window.addEventListener('orientationchange',function(){
-    orientationWindowUntil=Date.now()+2200;
-    schedulePortraitFixes();
+    orientationWindowUntil=Date.now()+5200;
+    scheduleRepairBurst(true);
   });
   window.addEventListener('resize',queueResizeAudit);
   if(vv) vv.addEventListener('resize',queueResizeAudit);
+  if(window.screen&&window.screen.orientation&&window.screen.orientation.addEventListener){
+    window.screen.orientation.addEventListener('change',function(){
+      orientationWindowUntil=Date.now()+5200;
+      scheduleRepairBurst(true);
+    });
+  }
 
   viewportMeta.setAttribute('content',normalViewport);
+
+  // Handle initial load in either orientation (especially if first paint is landscape).
+  orientationWindowUntil=Date.now()+3000;
+  scheduleRepairBurst(!physicalPortrait());
 })();
 
 // Compact caption detection (JS-driven for iOS Safari reliability)
