@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, shrink-to-fit=no">
 <title>Japan Spring 2025</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -42,6 +42,7 @@
   html{
     -webkit-text-size-adjust:100%;
     text-size-adjust:100%;
+    overflow-x:hidden;
   }
   html.ipad-safari-stable-text,
   html.ipad-safari-stable-text body{
@@ -54,6 +55,7 @@
     font-family:'Libre Baskerville',Georgia,'Times New Roman',serif;
     min-height:100vh;
     width:100%;
+    overflow-x:hidden;
     touch-action:manipulation;
   }
 
@@ -550,8 +552,10 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   function buildViewport(content,resetMode){
     var tokens=content.split(',').map(function(token){ return token.trim(); }).filter(Boolean);
     var hasViewportFit=false;
+    var hasShrinkToFit=false;
     tokens=tokens.filter(function(token){
       if(/^viewport-fit\s*=/i.test(token)) hasViewportFit=true;
+      if(/^shrink-to-fit\s*=/i.test(token)) hasShrinkToFit=true;
       return !/^(?:width|height|initial-scale|minimum-scale|maximum-scale|user-scalable)\s*=/i.test(token);
     });
     tokens.unshift('height=device-height');
@@ -565,6 +569,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       tokens.push('user-scalable=yes');
     }
     if(!hasViewportFit) tokens.push('viewport-fit=cover');
+    if(!hasShrinkToFit) tokens.push('shrink-to-fit=no');
     return tokens.join(', ');
   }
 
