@@ -557,8 +557,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     tokens.unshift('height=device-height');
     tokens.unshift('width=device-width');
     tokens.push('initial-scale=1');
+    tokens.push('minimum-scale=1');
     if(resetMode){
-      tokens.push('minimum-scale=1');
       tokens.push('maximum-scale=1');
       tokens.push('user-scalable=no');
     }else{
@@ -729,6 +729,11 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 (function(){
   const TOTAL=227;
   const GAP=6;
+  const UA=navigator.userAgent||'';
+  const PLATFORM=navigator.platform||'';
+  const IS_IPAD=/iPad/.test(UA)||(PLATFORM==='MacIntel'&&navigator.maxTouchPoints>1);
+  const IS_SAFARI=/Safari/.test(UA)&&!/CriOS|FxiOS|EdgiOS|OPiOS|DuckDuckGo|YaBrowser|Chrome|Chromium/i.test(UA);
+  const IS_IPAD_SAFARI=IS_IPAD&&IS_SAFARI;
 
   // ── City ranges ──
   const CITY_RANGES=[
@@ -1561,6 +1566,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   updateFiltered();
 
   // ── Masonry layout ──
+  let lastColCount=3;
   function layout(){
     const cols=getColCount();
     const containerW=gallery.clientWidth;
@@ -1588,10 +1594,21 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
   function getColCount(){
     const w=gallery.clientWidth;
-    if(w<=480)return 1;
-    if(w<=800)return 2;
-    if(w<=1200)return 3;
-    return 4;
+    let next=4;
+    if(w<=480)next=1;
+    else if(w<=800)next=2;
+    else if(w<=1200)next=3;
+
+    // iPad Safari can briefly report a wider width during orientation settle.
+    // Preventing transient 4-column flips avoids right-edge overflow flashes.
+    if(IS_IPAD_SAFARI&&next===4) next=3;
+
+    // Small hysteresis around the 1200px boundary to avoid jitter/flicker.
+    if(lastColCount===3&&next===4&&w<1240) next=3;
+    if(lastColCount===4&&next===3&&w>1160) next=4;
+
+    lastColCount=next;
+    return next;
   }
 
   // ── Batched layout scheduling ──
@@ -1651,7 +1668,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     clearTimeout(resizeTimer);
     resizeTimer=setTimeout(layout,100);
   });
-  if(window.visualViewport){
+  if(window.visualViewport&&!IS_IPAD_SAFARI){
     window.visualViewport.addEventListener('resize',function(){
       if(lightbox.classList.contains('active')){
         pendingLayoutAfterLightbox=true;
