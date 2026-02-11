@@ -379,20 +379,18 @@
 
   /* ── Caption truncation (mobile portrait only) ── */
   .lightbox-more{
-    display:none; /* hidden by default; JS shows when needed */
+    display:none;
     background:none;border:none;padding:0;
     font-family:'Libre Baskerville',Georgia,'Times New Roman',serif;
-    font-size:.85rem;
-    color:rgba(255,255,255,.4);
+    font-size:.75rem;
+    color:rgba(255,255,255,.38);
     cursor:pointer;
     letter-spacing:.02em;
     line-height:1.5;
+    margin-top:1px;
     -webkit-tap-highlight-color:transparent;
   }
-  @media(max-width:600px){
-    .lightbox-more{font-size:.75rem}
-  }
-  /* When clamped: location truncates to 2 lines and more button appears inline */
+  /* When clamped: location truncates to 1 line, more button shown below */
   .lightbox-caption.clamped .lightbox-location{
     display:-webkit-box;
     -webkit-line-clamp:1;
@@ -400,7 +398,7 @@
     overflow:hidden;
   }
   .lightbox-caption.clamped .lightbox-more{
-    display:inline;
+    display:block;
   }
   /* Expanded: remove clamp, hide button */
   .lightbox-caption.expanded .lightbox-location{
@@ -529,8 +527,8 @@
     <div class="lightbox-location">
       <span class="lightbox-city"></span>
       <span class="lightbox-place"></span>
-      <button class="lightbox-more" id="lbMore" aria-label="Show full caption">&thinsp;&hellip; more</button>
     </div>
+    <button class="lightbox-more" id="lbMore" aria-label="Show full caption">&hellip; more</button>
     <div class="lightbox-counter"></div>
   </div>
 </div>
