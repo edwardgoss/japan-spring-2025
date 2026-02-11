@@ -921,11 +921,10 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     var savedStates=[]; // {node, orig} for all nodes we've touched
     var hiddenEls=[];   // element nodes we've fully hidden
 
-    // Work from the last leaf text node backwards
-    // Save original data for each as we go
+    // Work from the last leaf text node backwards.
+    // We always place an ellipsis — never exit the loop early just because
+    // blanking a node happened to make it fit (we still need to add the …).
     for(var i=leafNodes.length-1;i>=0;i--){
-      if(lbLocation.scrollHeight<=threshold) break;
-
       var textNode=leafNodes[i];
       var orig=textNode.data;
       savedStates.unshift({node:textNode, orig:orig});
@@ -940,13 +939,13 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       }
 
       if(best<0){
-        // Even just the ellipsis doesn't fit — blank this node and try prev
+        // Even just the ellipsis alone doesn't fit here — blank and try prev node
         textNode.data='';
       } else {
-        // Trim to `best` chars — strip trailing space/dash/whitespace, then add ellipsis
+        // Trim to `best` chars — strip trailing space/dash/opening punctuation, add ellipsis
         var trimmed=orig.slice(0,best).replace(/[\s\u2014\-\(\uff08\u300c\u300e]+$/,'');
         textNode.data=trimmed+'\u2026';
-        break; // fits now
+        break; // ellipsis placed, done
       }
     }
 
