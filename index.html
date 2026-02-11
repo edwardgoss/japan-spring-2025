@@ -391,25 +391,12 @@
     letter-spacing:.02em;
     line-height:1.45;
     -webkit-tap-highlight-color:transparent;
-    vertical-align:baseline;
   }
   @media(max-width:600px){
     .lightbox-more{font-size:.7rem}
   }
-  /* When clamped: wrap becomes single-line truncated block, button inline after */
-  .lightbox-caption.clamped .lightbox-location-wrap{
-    display:-webkit-box;
-    -webkit-line-clamp:1;
-    -webkit-box-orient:vertical;
-    overflow:hidden;
-  }
   .lightbox-caption.clamped .lightbox-more{
     display:inline;
-  }
-  /* Expanded: full text, hide button */
-  .lightbox-caption.expanded .lightbox-location-wrap{
-    display:block;
-    overflow:visible;
   }
   .lightbox-caption.expanded .lightbox-more{
     display:none;
@@ -886,23 +873,55 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   }
   function resetCaptionClamp(){
     lbCaption.classList.remove('clamped','expanded');
+    if(lbLocation._fullHTML){
+      lbLocation.innerHTML=lbLocation._fullHTML;
+      lbLocation._fullHTML=null;
+    }
   }
   function applyCaptionClamp(){
     resetCaptionClamp();
+    // Restore full HTML in case we previously truncated
+    if(lbLocation._fullHTML) lbLocation.innerHTML=lbLocation._fullHTML;
+
     if(!isMobilePortrait()) return;
-    // Measure true (unclamped) height of the wrap
-    var fullH=lbLocationWrap.scrollHeight;
-    // Apply clamped state and measure clamped height
-    lbCaption.classList.add('clamped');
-    var clampedH=lbLocationWrap.offsetHeight;
-    // If it fits in one line, no button needed
-    if(fullH<=clampedH+2){
-      resetCaptionClamp();
+
+    // Check if text wraps at all (compare scrollHeight to one line height)
+    var oneLineH=parseFloat(getComputedStyle(lbLocation).lineHeight)||18;
+    if(lbLocation.scrollHeight<=oneLineH*1.4) return; // fits on one line — no clamp needed
+
+    // It wraps — truncate the plain text to fit one line with '… more'
+    // Get the full plain text (strip HTML for measuring, keep original HTML for restore)
+    if(!lbLocation._fullHTML) lbLocation._fullHTML=lbLocation.innerHTML;
+    var fullText=lbLocation.textContent||'';
+
+    // Binary-search the right char count so text + '… more' fits in one line
+    var lo=10, hi=fullText.length, best=lo;
+    lbLocation.innerHTML=fullText.slice(0,hi)+'\u2026';
+    if(lbLocation.scrollHeight<=oneLineH*1.4){
+      // Even full text fits — no clamp needed
+      lbLocation.innerHTML=lbLocation._fullHTML;
+      return;
     }
-    // else: stays clamped with 'more' visible inline after the ellipsis
+    while(lo<=hi){
+      var mid=Math.floor((lo+hi)/2);
+      lbLocation.innerHTML=fullText.slice(0,mid)+'\u2026 more';
+      if(lbLocation.scrollHeight<=oneLineH*1.4){
+        best=mid;
+        lo=mid+1;
+      }else{
+        hi=mid-1;
+      }
+    }
+    // Set final truncated text (without 'more' — button supplies that)
+    lbLocation.innerHTML=fullText.slice(0,best)+'\u2026';
+    lbCaption.classList.add('clamped');
   }
   lbMore.addEventListener('click',function(e){
     e.stopPropagation();
+    if(lbLocation._fullHTML){
+      lbLocation.innerHTML=lbLocation._fullHTML;
+      lbLocation._fullHTML=null;
+    }
     lbCaption.classList.remove('clamped');
     lbCaption.classList.add('expanded');
     requestAnimationFrame(updateCaptionHeight);
