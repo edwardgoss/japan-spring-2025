@@ -378,11 +378,8 @@
   .lightbox-sep{opacity:.45;margin:0 2px}
 
   /* ── Caption truncation (mobile portrait only) ── */
-  .lightbox-location-wrap{
-    display:block;
-  }
   .lightbox-more{
-    display:none;
+    display:none; /* shown/hidden via JS */
     background:none;border:none;padding:0;
     font-family:'Libre Baskerville',Georgia,'Times New Roman',serif;
     font-size:.75rem;
@@ -391,15 +388,10 @@
     letter-spacing:.02em;
     line-height:1.45;
     -webkit-tap-highlight-color:transparent;
+    vertical-align:baseline;
   }
   @media(max-width:600px){
     .lightbox-more{font-size:.7rem}
-  }
-  .lightbox-caption.clamped .lightbox-more{
-    display:inline;
-  }
-  .lightbox-caption.expanded .lightbox-more{
-    display:none;
   }
 
   .lightbox-spinner{
@@ -517,12 +509,9 @@
   <div class="lightbox-spinner"></div>
   <img src="" alt="">
   <div class="lightbox-caption">
-    <div class="lightbox-location-wrap">
-      <div class="lightbox-location">
-        <span class="lightbox-city"></span>
-        <span class="lightbox-place"></span>
-      </div>
-      <button class="lightbox-more" id="lbMore" aria-label="Show full caption">more</button>
+    <div class="lightbox-location">
+      <span class="lightbox-city"></span>
+      <span class="lightbox-place"></span>
     </div>
     <div class="lightbox-counter"></div>
   </div>
@@ -857,9 +846,13 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const lbPlace=lightbox.querySelector('.lightbox-place');
   const lbCounter=lightbox.querySelector('.lightbox-counter');
   const lbCaption=lightbox.querySelector('.lightbox-caption');
-  const lbMore=document.getElementById('lbMore');
   const lbLocation=lightbox.querySelector('.lightbox-location');
-  const lbLocationWrap=lightbox.querySelector('.lightbox-location-wrap');
+  // Create the 'more' button and inject it — it lives inside lbLocation so it flows inline
+  var lbMore=document.createElement('button');
+  lbMore.className='lightbox-more';
+  lbMore.setAttribute('aria-label','Show full caption');
+  lbMore.textContent='more';
+  lbLocation.appendChild(lbMore);
 
   function updateCaptionHeight(){
     if(!lightbox.classList.contains('active')) return;
@@ -873,55 +866,112 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   }
   function resetCaptionClamp(){
     lbCaption.classList.remove('clamped','expanded');
-    if(lbLocation._fullHTML){
-      lbLocation.innerHTML=lbLocation._fullHTML;
-      lbLocation._fullHTML=null;
+    // Remove any injected ellipsis text node
+    if(lbLocation._ellipsisNode){
+      if(lbLocation._ellipsisNode.parentNode) lbLocation._ellipsisNode.parentNode.removeChild(lbLocation._ellipsisNode);
+      lbLocation._ellipsisNode=null;
     }
+    // Restore trimmed text node
+    if(lbLocation._origTextNode){
+      lbLocation._origTextNode.node.data=lbLocation._origTextNode.orig;
+      lbLocation._origTextNode=null;
+    }
+    // Restore hidden nodes
+    if(lbLocation._hiddenNodes){
+      lbLocation._hiddenNodes.forEach(function(n){
+        if(n.nodeType===Node.ELEMENT_NODE) n.style.display='';
+        else if(n._origData!=null){ n.data=n._origData; delete n._origData; }
+      });
+      lbLocation._hiddenNodes=null;
+    }
+    // Ensure more button is back inside lbLocation and hidden
+    if(lbMore.parentNode!==lbLocation) lbLocation.appendChild(lbMore);
+    lbMore.style.display='none';
   }
+
   function applyCaptionClamp(){
     resetCaptionClamp();
-    // Restore full HTML in case we previously truncated
-    if(lbLocation._fullHTML) lbLocation.innerHTML=lbLocation._fullHTML;
-
     if(!isMobilePortrait()) return;
 
-    // Check if text wraps at all (compare scrollHeight to one line height)
     var oneLineH=parseFloat(getComputedStyle(lbLocation).lineHeight)||18;
-    if(lbLocation.scrollHeight<=oneLineH*1.4) return; // fits on one line — no clamp needed
 
-    // It wraps — truncate the plain text to fit one line with '… more'
-    // Get the full plain text (strip HTML for measuring, keep original HTML for restore)
-    if(!lbLocation._fullHTML) lbLocation._fullHTML=lbLocation.innerHTML;
-    var fullText=lbLocation.textContent||'';
+    // Ensure more button is hidden for measurement
+    lbMore.style.display='none';
 
-    // Binary-search the right char count so text + '… more' fits in one line
-    var lo=10, hi=fullText.length, best=lo;
-    lbLocation.innerHTML=fullText.slice(0,hi)+'\u2026';
-    if(lbLocation.scrollHeight<=oneLineH*1.4){
-      // Even full text fits — no clamp needed
-      lbLocation.innerHTML=lbLocation._fullHTML;
-      return;
+    // If already fits on one line, nothing to do
+    if(lbLocation.scrollHeight<=Math.round(oneLineH*1.4)) return;
+
+    // Show more button inline for binary search measurement
+    lbMore.style.display='inline';
+
+    // Walk child nodes (excluding the more button) and binary-search
+    // the right truncation point within the text nodes
+    var nodes=Array.from(lbLocation.childNodes).filter(function(n){ return n!==lbMore; });
+
+    // Collect all text content with node references for precise truncation
+    // Strategy: hide trailing nodes until it fits, then trim the last visible text node
+    var hiddenNodes=[];
+
+    // First try hiding whole nodes from the end
+    for(var i=nodes.length-1;i>=0;i--){
+      if(lbLocation.scrollHeight<=Math.round(oneLineH*1.4)) break;
+      var node=nodes[i];
+      if(node.nodeType===Node.ELEMENT_NODE) node.style.display='none';
+      else node._origData=node.data; // text node
+      hiddenNodes.unshift(node);
     }
-    while(lo<=hi){
-      var mid=Math.floor((lo+hi)/2);
-      lbLocation.innerHTML=fullText.slice(0,mid)+'\u2026 more';
-      if(lbLocation.scrollHeight<=oneLineH*1.4){
-        best=mid;
-        lo=mid+1;
-      }else{
-        hi=mid-1;
+
+    // Now we may still be over; trim the last visible text node
+    var lastVisible=null;
+    for(var j=0;j<nodes.length;j++){
+      if(hiddenNodes.indexOf(nodes[j])===-1) lastVisible=nodes[j];
+    }
+
+    var ellipsisNode=document.createTextNode('\u2026');
+    if(lastVisible && lastVisible.nodeType===Node.TEXT_NODE){
+      var orig=lastVisible.data;
+      // Binary search trim
+      var lo=0,hi=orig.length,best=0;
+      while(lo<=hi){
+        var mid=Math.floor((lo+hi)/2);
+        lastVisible.data=orig.slice(0,mid)+'\u2026';
+        if(lbLocation.scrollHeight<=Math.round(oneLineH*1.4)){best=mid;lo=mid+1;}
+        else hi=mid-1;
       }
+      lastVisible.data=orig.slice(0,best)+'\u2026';
+      lbLocation._ellipsisNode=null; // already embedded in text node
+      lbLocation._origTextNode={node:lastVisible,orig:orig};
+    } else {
+      // Insert ellipsis text node before the more button
+      lbLocation.insertBefore(ellipsisNode,lbMore);
+      lbLocation._ellipsisNode=ellipsisNode;
     }
-    // Set final truncated text (without 'more' — button supplies that)
-    lbLocation.innerHTML=fullText.slice(0,best)+'\u2026';
+
+    lbLocation._hiddenNodes=hiddenNodes;
     lbCaption.classList.add('clamped');
   }
+
   lbMore.addEventListener('click',function(e){
     e.stopPropagation();
-    if(lbLocation._fullHTML){
-      lbLocation.innerHTML=lbLocation._fullHTML;
-      lbLocation._fullHTML=null;
+    // Restore hidden nodes
+    if(lbLocation._hiddenNodes){
+      lbLocation._hiddenNodes.forEach(function(n){
+        if(n.nodeType===Node.ELEMENT_NODE) n.style.display='';
+        else if(n._origData!=null){ n.data=n._origData; delete n._origData; }
+      });
+      lbLocation._hiddenNodes=null;
     }
+    // Restore trimmed text node
+    if(lbLocation._origTextNode){
+      lbLocation._origTextNode.node.data=lbLocation._origTextNode.orig;
+      lbLocation._origTextNode=null;
+    }
+    // Remove ellipsis node if separate
+    if(lbLocation._ellipsisNode){
+      if(lbLocation._ellipsisNode.parentNode) lbLocation._ellipsisNode.parentNode.removeChild(lbLocation._ellipsisNode);
+      lbLocation._ellipsisNode=null;
+    }
+    lbMore.style.display='none';
     lbCaption.classList.remove('clamped');
     lbCaption.classList.add('expanded');
     requestAnimationFrame(updateCaptionHeight);
