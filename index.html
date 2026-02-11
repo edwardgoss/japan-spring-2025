@@ -936,16 +936,26 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
   function applyCaptionClamp(){
     resetCaptionClamp();
+    if(!lightbox.classList.contains('active')) return;
     if(!isMobilePortrait()) return;
-
-    var oneLineH=parseFloat(getComputedStyle(lbLocation).lineHeight)||18;
-    var threshold=Math.round(oneLineH*1.4);
+    var locationStyle=getComputedStyle(lbLocation);
+    var oneLineH=parseFloat(locationStyle.lineHeight);
+    if(!isFinite(oneLineH)||oneLineH<=0){
+      var fs=parseFloat(locationStyle.fontSize)||14;
+      oneLineH=fs*1.45;
+    }
+    function overflowsOneLine(){
+      // Width overflow is the primary signal; height check is a fallback for iOS quirks.
+      if(lbLocation.clientWidth<=0) return false;
+      if(lbLocation.scrollWidth>lbLocation.clientWidth+1) return true;
+      return lbLocation.getBoundingClientRect().height>Math.round(oneLineH*1.18);
+    }
 
     // Hide more button for initial check
     lbMore.style.display='none';
 
     // If already fits on one line, nothing to do
-    if(lbLocation.scrollHeight<=threshold) return;
+    if(!overflowsOneLine()) return;
 
     // Show more button inline — it must fit on the same line
     lbMore.style.display='inline';
@@ -970,7 +980,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       while(lo<=hi){
         var mid=Math.floor((lo+hi)/2);
         textNode.data=orig.slice(0,mid)+'\u2026';
-        if(lbLocation.scrollHeight<=threshold){ best=mid; lo=mid+1; }
+        if(!overflowsOneLine()){ best=mid; lo=mid+1; }
         else hi=mid-1;
       }
 
@@ -978,8 +988,10 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
         // Even just the ellipsis alone doesn't fit here — blank and try prev node
         textNode.data='';
       } else {
-        // Trim to `best` chars — strip trailing space/dash/opening punctuation, add ellipsis
-        var trimmed=orig.slice(0,best).replace(/[\s\u2014\-\(\uff08\u300c\u300e]+$/,'');
+        // Trim to `best` chars and ensure we only ever render a single ellipsis.
+        var trimmed=orig.slice(0,best)
+          .replace(/[\s\u2014\-\(\uff08\u300c\u300e]+$/,'')
+          .replace(/(?:\u2026|\.{3,})+$/,'');
         textNode.data=trimmed+'\u2026';
         break; // ellipsis placed, done
       }
@@ -987,10 +999,10 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
     // If still overflowing after emptying all text nodes, hide whole element children
     // from the end of lbLocation (shouldn't normally be needed)
-    if(lbLocation.scrollHeight>threshold){
+    if(overflowsOneLine()){
       var topChildren=Array.from(lbLocation.childNodes).filter(function(n){ return n!==lbMore; });
       for(var k=topChildren.length-1;k>=0;k--){
-        if(lbLocation.scrollHeight<=threshold) break;
+        if(!overflowsOneLine()) break;
         if(topChildren[k].nodeType===Node.ELEMENT_NODE){
           topChildren[k].style.display='none';
           hiddenEls.push(topChildren[k]);
@@ -1001,6 +1013,28 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     lbLocation._clampState=savedStates;
     lbLocation._hiddenEls=hiddenEls.length ? hiddenEls : null;
     lbCaption.classList.add('clamped');
+  }
+
+  var captionClampTimers=[];
+  function clearCaptionClampTimers(){
+    for(var i=0;i<captionClampTimers.length;i++) clearTimeout(captionClampTimers[i]);
+    captionClampTimers=[];
+  }
+  function runCaptionClampPass(){
+    if(!lightbox.classList.contains('active')) return;
+    applyCaptionClamp();
+    updateCaptionHeight();
+  }
+  function scheduleCaptionClampPasses(){
+    clearCaptionClampTimers();
+    [0,80,180,320,520].forEach(function(delay){
+      captionClampTimers.push(setTimeout(runCaptionClampPass,delay));
+    });
+    if(document.fonts&&document.fonts.ready){
+      document.fonts.ready.then(function(){
+        if(lightbox.classList.contains('active')) runCaptionClampPass();
+      });
+    }
   }
 
   lbMore.addEventListener('click',function(e){
@@ -1615,9 +1649,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
     // Measure caption height so image fits above it, then check truncation
     requestAnimationFrame(function(){
-      updateCaptionHeight();
-      applyCaptionClamp();
-      updateCaptionHeight(); // re-measure after clamp may have changed height
+      scheduleCaptionClampPasses();
     });
 
     // Preload adjacent full-res images for snappy navigation
@@ -1627,6 +1659,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   }
 
   function closeLightbox(){
+    clearCaptionClampTimers();
     lightbox.classList.remove('active','loading');
     document.body.style.overflow='';
     lbImg.src='';
@@ -1711,13 +1744,22 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   },{passive:true});
 
   // Keep caption height measurement up to date on resize/rotation
-  window.addEventListener('resize',updateCaptionHeight);
+  window.addEventListener('resize',function(){
+    updateCaptionHeight();
+    if(lightbox.classList.contains('active')) scheduleCaptionClampPasses();
+  });
   if(window.visualViewport){
-    window.visualViewport.addEventListener('resize',updateCaptionHeight);
+    window.visualViewport.addEventListener('resize',function(){
+      updateCaptionHeight();
+      if(lightbox.classList.contains('active')) scheduleCaptionClampPasses();
+    });
   }
   window.addEventListener('orientationchange',function(){
     if(lightbox.classList.contains('active')) lightboxRotatedWhileOpen=true;
-    setTimeout(updateCaptionHeight,400);
+    setTimeout(function(){
+      updateCaptionHeight();
+      if(lightbox.classList.contains('active')) scheduleCaptionClampPasses();
+    },400);
   });
 
 })();
