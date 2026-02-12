@@ -353,9 +353,6 @@
     opacity:1;
     transform:translateY(0);
   }
-  .gallery-item.loaded-noanim{
-    transition:none !important;
-  }
   .gallery-item.filtered-out{
     display:none !important;
   }
@@ -363,7 +360,11 @@
     width:100%;
     height:auto;
     display:block;
-    transition:transform .3s ease;
+    opacity:0;
+    transition:opacity .42s ease-out,transform .3s ease;
+  }
+  .gallery-item.revealed img{
+    opacity:1;
   }
   .gallery-item:hover img{
     transform:scale(1.03);
@@ -667,6 +668,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 (function(){
   const TOTAL=227;
   const GAP=6;
+  const INITIAL_EAGER = window.innerWidth <= 800 ? 10 : 14;
+  const HIGH_PRIORITY_EAGER = 6;
 
   // ── City ranges ──
   const CITY_RANGES=[
@@ -1350,23 +1353,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     return bestIdx;
   }
 
-  function primeLoadAround(centerIdx,upCount,downCount){
-    if(centerIdx<0) return;
-    var start=Math.max(0,centerIdx-(upCount||30));
-    var end=Math.min(items.length-1,centerIdx+(downCount||12));
-    for(var i=start;i<=end;i++){
-      var item=items[i];
-      if(!item||item.loaded) continue;
-      item.img.loading='eager';
-      if('fetchPriority' in item.img){
-        item.img.fetchPriority=i<=centerIdx?'high':'auto';
-      }
-    }
-  }
-
   function setFilter(city){
-    // Capture which photo is currently at the top before changing filter
-    var anchorIdx=getTopVisibleIndex();
+    // For non-"All" filters, preserve context by anchoring to top visible photo.
+    var anchorIdx=city==='All' ? -1 : getTopVisibleIndex();
 
     activeFilter=city;
     updateClearAllBtn();
@@ -1376,6 +1365,18 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     updateFiltered();
     layout();
     lastShownKey=''; // force update since filter changed
+
+    // Reset "All" to the top for a cleaner, predictable experience.
+    if(city==='All'){
+      gallery.classList.add('settling-deep');
+      window.scrollTo({top:0,behavior:'instant'});
+      requestAnimationFrame(function(){
+        gallery.classList.remove('settling-deep');
+      });
+      updateNowShowing();
+      updateNoResults();
+      return;
+    }
 
     // Try to scroll to the anchor photo's new position
     var scrollTarget=-1;
@@ -1387,10 +1388,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     }
 
     if(scrollTarget>=0){
-      if(city==='All'){
-        // Preload a small band around the anchor so scrolling upward is smoother.
-        primeLoadAround(scrollTarget,36,14);
-      }
       gallery.classList.add('settling');
       var headerH=document.querySelector('header').offsetHeight;
       var el=items[scrollTarget].el;
@@ -1575,7 +1572,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   // ── Build gallery items ──
   for(let i=1;i<=TOTAL;i++){
     const num=String(i).padStart(3,'0');
-    const src='full_photos/Japan_Spring-2025_'+num+'.jpg';
+    const src='full_photos/Japan_Spring-2025_'+num+'.webp';
     const div=document.createElement('div');
     div.className='gallery-item';
     div.dataset.index=i-1;
@@ -1583,8 +1580,13 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     const img=document.createElement('img');
     img.alt='Japan Spring 2025 - '+(cityMap[i]||'Photo')+' '+i;
     img.decoding='async';
-    if(i<=8){img.loading='eager';img.fetchPriority='high'}
-    else{img.loading='lazy'}
+    if(i<=INITIAL_EAGER){
+      img.loading='eager';
+      img.fetchPriority=i<=HIGH_PRIORITY_EAGER?'high':'auto';
+    }else{
+      img.loading='lazy';
+      img.fetchPriority='low';
+    }
     img.src=src;
     div.appendChild(img);
     gallery.appendChild(div);
@@ -1629,43 +1631,32 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
   // ── Batched layout scheduling ──
   let layoutQueued=false;
-  let layoutDelayTimer=null;
-  let lastScrollTs=0;
-  let lastScrollY=window.scrollY||0;
-  let lastScrollDir=0; // -1 up, +1 down
   function scheduleLayout(){
     if(!layoutQueued){
       layoutQueued=true;
-      const scrollingRecently=(Date.now()-lastScrollTs)<120;
-      const delay=scrollingRecently?60:0;
-      clearTimeout(layoutDelayTimer);
-      layoutDelayTimer=setTimeout(function(){
-        requestAnimationFrame(function(){
-          layoutQueued=false;
-          layout();
-        });
-      },delay);
+      requestAnimationFrame(function(){
+        layoutQueued=false;
+        layout();
+      });
     }
   }
 
   // ── Image load tracking ──
   function onImageReady(item){
-    if((Date.now()-lastScrollTs)<160&&lastScrollDir<0){
-      item.el.classList.add('loaded-noanim');
-    }
     item.el.classList.add('loaded');
-    if(item.el.classList.contains('loaded-noanim')){
-      requestAnimationFrame(function(){
-        item.el.classList.remove('loaded-noanim');
-      });
-    }
     scheduleLayout();
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        item.el.classList.add('revealed');
+      });
+    });
   }
   items.forEach(function(item){
     if(item.img.complete&&item.img.naturalWidth){
       item.ratio=item.img.naturalWidth/item.img.naturalHeight;
       item.loaded=true;
       item.el.classList.add('loaded');
+      item.el.classList.add('revealed');
     }else{
       item.img.onload=function(){
         item.ratio=item.img.naturalWidth/item.img.naturalHeight;
@@ -1714,12 +1705,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   // ── Unified scroll handler ──
   let scrollTicking=false;
   window.addEventListener('scroll',function(){
-    const y=window.scrollY||0;
-    if(y!==lastScrollY){
-      lastScrollDir=y<lastScrollY?-1:1;
-      lastScrollY=y;
-    }
-    lastScrollTs=Date.now();
     if(!scrollTicking){
       scrollTicking=true;
       requestAnimationFrame(function(){
@@ -1747,12 +1732,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     lightboxRotatedWhileOpen=false;
     openLightbox();
   });
-
-  function thumbSrc(idx){
-    return 'grid_photos/Japan_Spring-2025_'+String(idx+1).padStart(3,'0')+'.jpg';
-  }
   function photoSrc(idx){
-    return 'full_photos/Japan_Spring-2025_'+String(idx+1).padStart(3,'0')+'.jpg';
+    return 'full_photos/Japan_Spring-2025_'+String(idx+1).padStart(3,'0')+'.webp';
   }
 
   function openLightbox(){
