@@ -668,8 +668,35 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 (function(){
   const TOTAL=227;
   const GAP=6;
-  const INITIAL_EAGER = window.innerWidth <= 800 ? 10 : 14;
-  const HIGH_PRIORITY_EAGER = 6;
+  const ua=navigator.userAgent||'';
+  const isSafariBrowser=/Safari/i.test(ua)&&!/Chrome|CriOS|FxiOS|EdgiOS|OPiOS|OPR|Android/i.test(ua);
+  const INITIAL_EAGER = window.innerWidth <= 800 ? (isSafariBrowser ? 14 : 10) : (isSafariBrowser ? 18 : 14);
+  const HIGH_PRIORITY_EAGER = isSafariBrowser ? 8 : 6;
+  const PRELOAD_AHEAD_MARGIN = isSafariBrowser ? 2200 : 1200;
+  const RATIO_CODES='LPLPLPTPPLLPLLLPPPPPLPLLPPPLLLLWPTPPLPPLLLPTLPLPPWTLPLWPLLLPPPPTTWTPPTLPLPPLLLPLLLLWLPLPPLLTPPPLPLLLLPPLLLPPLPPLPTWPLPPLLPLLPPLLLPLPLLWLLLLPLWWPPLPLPPPLLTTWPLPLLLPLPWPLLLLLLLLPLLLLPLLLLLLLLWPLLLTPLPPPLLPLPPLLPLLLLLLLLLWLWTWTWTL';
+  const RATIO_PRESETS={
+    L:{w:2048,h:1365,ratio:2048/1365},
+    P:{w:1365,h:2048,ratio:1365/2048},
+    W:{w:2048,h:1536,ratio:2048/1536},
+    T:{w:1536,h:2048,ratio:1536/2048}
+  };
+  const lazyObserver=('IntersectionObserver' in window)
+    ? new IntersectionObserver(function(entries){
+        entries.forEach(function(entry){
+          if(!entry.isIntersecting&&entry.intersectionRatio<=0) return;
+          const img=entry.target;
+          if(img.dataset.src){
+            img.src=img.dataset.src;
+            img.removeAttribute('data-src');
+          }
+          lazyObserver.unobserve(img);
+        });
+      },{
+        root:null,
+        rootMargin:PRELOAD_AHEAD_MARGIN+'px 0px '+PRELOAD_AHEAD_MARGIN+'px 0px',
+        threshold:0.01
+      })
+    : null;
 
   // ── City ranges ──
   const CITY_RANGES=[
@@ -1573,24 +1600,34 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   for(let i=1;i<=TOTAL;i++){
     const num=String(i).padStart(3,'0');
     const src='full_photos/Japan_Spring-2025_'+num+'.webp';
+    const ratioCode=RATIO_CODES.charAt(i-1);
+    const preset=RATIO_PRESETS[ratioCode]||RATIO_PRESETS.L;
     const div=document.createElement('div');
     div.className='gallery-item';
     div.dataset.index=i-1;
     div.dataset.photoNum=i;
     const img=document.createElement('img');
     img.alt='Japan Spring 2025 - '+(cityMap[i]||'Photo')+' '+i;
+    img.width=preset.w;
+    img.height=preset.h;
     img.decoding='async';
     if(i<=INITIAL_EAGER){
       img.loading='eager';
       img.fetchPriority=i<=HIGH_PRIORITY_EAGER?'high':'auto';
+      img.src=src;
     }else{
       img.loading='lazy';
-      img.fetchPriority='low';
+      img.fetchPriority='auto';
+      if(lazyObserver){
+        img.dataset.src=src;
+        lazyObserver.observe(img);
+      }else{
+        img.src=src;
+      }
     }
-    img.src=src;
     div.appendChild(img);
     gallery.appendChild(div);
-    items.push({el:div,img:img,ratio:0,loaded:false});
+    items.push({el:div,img:img,ratio:preset.ratio,loaded:false});
   }
 
   updateFiltered();
