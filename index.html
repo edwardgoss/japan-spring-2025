@@ -1863,30 +1863,14 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     }
   }
 
-  function scheduleLayoutAfterLightbox(anchor,ensureVisibleIndex){
+  function scheduleLayoutAfterLightbox(){
     lightboxSettleToken++;
     var settleToken=lightboxSettleToken;
-    var baselineScrollY=window.scrollY||0;
-    function userHasScrolledSinceClose(){
-      return Math.abs((window.scrollY||0)-baselineScrollY)>2;
-    }
     function run(){
       if(settleToken!==lightboxSettleToken) return;
       layout();
-      if(!userHasScrolledSinceClose()){
-        if(anchor){
-          withSuppressedAnchorTracking(function(){
-            restoreGalleryScrollAnchor(anchor);
-          });
-          preferredRotationAnchorIndex=anchor.index;
-          baselineScrollY=window.scrollY||0;
-        }
-        if(typeof ensureVisibleIndex==='number'&&ensureVisibleIndex>=0&&!isPhotoVisibleInGalleryViewport(ensureVisibleIndex)){
-          scrollPhotoToGalleryViewport(ensureVisibleIndex);
-          preferredRotationAnchorIndex=ensureVisibleIndex;
-          baselineScrollY=window.scrollY||0;
-        }
-      }
+      // Post-close settle passes should never move scroll; immediate close logic
+      // already handled target sync and visibility decisions.
       updateNowShowing();
     }
     clearTimeout(resizeTimer);
@@ -2128,25 +2112,20 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     // Re-layout immediately so scroll decisions use the current geometry.
     layout();
 
-    var postCloseAnchor=null;
     if(shouldSyncToTarget){
       if(!isPhotoVisibleInGalleryViewport(targetIndex)){
         scrollPhotoToGalleryViewport(targetIndex);
-        postCloseAnchor={index:targetIndex,offset:0};
-      }else{
-        postCloseAnchor=captureGalleryScrollAnchor(false);
       }
     }else{
       // No navigation + no viewport change: restore exactly where user left.
       window.scrollTo({top:lightboxOpenScrollY,behavior:'instant'});
-      postCloseAnchor=captureGalleryScrollAnchor(false);
     }
 
     lightboxRotatedWhileOpen=false;
 
     // Re-layout follow-up in case viewport continues settling after close.
     pendingLayoutAfterLightbox=false;
-    scheduleLayoutAfterLightbox(postCloseAnchor,shouldSyncToTarget?targetIndex:-1);
+    scheduleLayoutAfterLightbox();
   }
 
   function navigate(dir){
