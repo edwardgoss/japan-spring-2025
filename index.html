@@ -1721,7 +1721,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   // ── Build gallery items ──
   for(let i=1;i<=TOTAL;i++){
     const num=String(i).padStart(3,'0');
-    const src='full_photos/Japan_Spring-2025_'+num+'.webp';
+    const src='grid_photos/Japan_Spring-2025_'+num+'.webp';
     const ratioCode=RATIO_CODES.charAt(i-1);
     const preset=RATIO_PRESETS[ratioCode]||RATIO_PRESETS.L;
     const div=document.createElement('div');
