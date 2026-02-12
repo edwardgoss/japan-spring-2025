@@ -746,6 +746,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
 // Compact caption detection (JS-driven for iOS Safari reliability)
 (function(){
+  function isViewportPinchScaled(){
+    return !!(window.visualViewport&&typeof window.visualViewport.scale==='number'&&window.visualViewport.scale>1.01);
+  }
   function getViewport(){
     // visualViewport is more reliable on iOS Safari (accounts for toolbar/keyboard)
     if(window.visualViewport){
@@ -769,7 +772,12 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
   window.addEventListener('resize',function(){ updateCompactDebounced(100); });
   if(window.visualViewport){
-    window.visualViewport.addEventListener('resize',function(){ updateCompactDebounced(100); });
+    window.visualViewport.addEventListener('resize',function(){
+      // Ignore pinch-zoom driven viewport resizes; compact mode should only
+      // track orientation/toolbar geometry changes.
+      if(isViewportPinchScaled()) return;
+      updateCompactDebounced(100);
+    });
   }
   window.addEventListener('orientationchange',function(){
     // Don't read viewport at all until Safari has fully settled
@@ -1922,6 +1930,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   let lastRelayoutViewportWidth=0;
   let rotationAnchorLocked=false;
   let suppressAnchorTrackingScroll=false;
+  function isViewportPinchScaled(){
+    return !!(window.visualViewport&&typeof window.visualViewport.scale==='number'&&window.visualViewport.scale>1.01);
+  }
 
   function getLayoutViewportWidth(){
     var w=document.documentElement.clientWidth||window.innerWidth;
@@ -2317,11 +2328,13 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
   // Keep caption height measurement up to date on resize/rotation
   window.addEventListener('resize',function(){
+    if(lightbox.classList.contains('active')&&isViewportPinchScaled()) return;
     updateCaptionHeight();
     if(lightbox.classList.contains('active')) scheduleCaptionClampPasses();
   });
   if(window.visualViewport){
     window.visualViewport.addEventListener('resize',function(){
+      if(lightbox.classList.contains('active')&&isViewportPinchScaled()) return;
       updateCaptionHeight();
       if(lightbox.classList.contains('active')) scheduleCaptionClampPasses();
     });
