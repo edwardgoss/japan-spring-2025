@@ -1868,7 +1868,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     var settleToken=lightboxSettleToken;
     var baselineScrollY=window.scrollY||0;
     function userHasScrolledSinceClose(){
-      return Math.abs((window.scrollY||0)-baselineScrollY)>14;
+      return Math.abs((window.scrollY||0)-baselineScrollY)>2;
     }
     function run(){
       if(settleToken!==lightboxSettleToken) return;
@@ -2118,6 +2118,12 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     lbImg.src='';
     lightbox.style.removeProperty('--caption-h');
     resetCaptionClamp();
+
+    // Exiting from rotated lightbox: stop gallery orientation settle re-anchors.
+    orientationSettleUntil=0;
+    clearTimeout(orientationFinalizeTimer);
+    clearTimeout(orientationUiTimer);
+    document.documentElement.classList.remove('orientation-settling');
 
     // Re-layout immediately so scroll decisions use the current geometry.
     layout();
