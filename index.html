@@ -1873,7 +1873,13 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     function run(){
       if(settleToken!==lightboxSettleToken) return;
       if(userHasScrolledSinceClose()) return;
+      var scrollBeforeLayout=window.scrollY||0;
       layout();
+      if(Math.abs((window.scrollY||0)-scrollBeforeLayout)>1){
+        withSuppressedAnchorTracking(function(){
+          window.scrollTo({top:scrollBeforeLayout,behavior:'instant'});
+        });
+      }
       // Post-close settle passes should never move scroll; immediate close logic
       // already handled target sync and visibility decisions.
       updateNowShowing();
@@ -1902,12 +1908,23 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     }else{
       anchor=captureGalleryScrollAnchor(false);
     }
+    var baselineScrollY=window.scrollY||0;
+    function runAnchoredRelayout(){
+      // If the user started scrolling before the delayed relayout runs,
+      // do not restore an older anchor position.
+      if(Math.abs((window.scrollY||0)-baselineScrollY)>2){
+        layout();
+        updateNowShowing();
+        return;
+      }
+      applyAnchoredRelayout(anchor);
+    }
     clearTimeout(resizeTimer);
     if(delay<=0){
-      applyAnchoredRelayout(anchor);
+      runAnchoredRelayout();
       return;
     }
-    resizeTimer=setTimeout(function(){ applyAnchoredRelayout(anchor); },delay);
+    resizeTimer=setTimeout(runAnchoredRelayout,delay);
   }
   function scheduleOrientationFinalize(){
     clearTimeout(orientationFinalizeTimer);
