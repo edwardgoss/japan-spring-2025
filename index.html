@@ -1301,6 +1301,10 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   let lightboxOpenWidth=0;
   let lightboxOpenScrollY=0;
   let lightboxRotatedWhileOpen=false;
+  const lightboxPreloadAhead=new Image();
+  const lightboxPreloadBehind=new Image();
+  let lastLightboxPreloadAhead=-1;
+  let lastLightboxPreloadBehind=-1;
   let activeFilter='All';
   let activeSearch='';
   const items=[];
@@ -2072,6 +2076,32 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     return 'full_photos/Japan_Spring-2025_'+String(idx+1).padStart(3,'0')+'.webp';
   }
 
+  function preloadLightboxNeighbors(){
+    if(current<0||current>=filtered.length) return;
+
+    var aheadIdx=current+1<filtered.length?filtered[current+1]:-1;
+    if(aheadIdx>=0&&aheadIdx!==lastLightboxPreloadAhead){
+      lightboxPreloadAhead.src=photoSrc(aheadIdx);
+      lastLightboxPreloadAhead=aheadIdx;
+    }
+
+    // On iOS-like devices keep preload pressure lower to avoid tab reloads.
+    if(isIOSLike) return;
+
+    var behindIdx=current-1>=0?filtered[current-1]:-1;
+    if(behindIdx>=0&&behindIdx!==lastLightboxPreloadBehind){
+      lightboxPreloadBehind.src=photoSrc(behindIdx);
+      lastLightboxPreloadBehind=behindIdx;
+    }
+  }
+
+  function resetLightboxPreloaders(){
+    lightboxPreloadAhead.src='';
+    lightboxPreloadBehind.src='';
+    lastLightboxPreloadAhead=-1;
+    lastLightboxPreloadBehind=-1;
+  }
+
   function getGalleryPhotoMetrics(idx){
     if(typeof idx!=='number'||idx<0||idx>=items.length) return null;
     var el=items[idx].el;
@@ -2139,9 +2169,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       scheduleCaptionClampPasses();
     });
 
-    // Preload adjacent full-res images for snappy navigation
-    if(current+1<filtered.length) new Image().src=photoSrc(filtered[current+1]);
-    if(current-1>=0) new Image().src=photoSrc(filtered[current-1]);
+    // Preload adjacent full-res images for snappy navigation.
+    // Uses bounded preloaders to avoid accumulating parallel image decodes.
+    preloadLightboxNeighbors();
 
   }
 
@@ -2156,6 +2186,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     lightbox.classList.remove('active','loading');
     document.body.style.overflow='';
     lbImg.src='';
+    resetLightboxPreloaders();
     lightbox.style.removeProperty('--caption-h');
     resetCaptionClamp();
 
