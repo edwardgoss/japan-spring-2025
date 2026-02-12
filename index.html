@@ -267,6 +267,19 @@
     background:var(--menu-border);
     margin:4px 0;
   }
+  .menu-footer-divider{
+    margin-top:8px;
+    margin-bottom:0;
+  }
+  .menu-footer-credit{
+    padding:10px 16px 12px;
+    font-family:'Libre Baskerville',Georgia,'Times New Roman',serif;
+    font-size:.68rem;
+    letter-spacing:.02em;
+    color:var(--text-secondary);
+    opacity:.58;
+    text-align:center;
+  }
 
   /* ── Masonry grid ── */
   .gallery{
@@ -458,15 +471,15 @@
 
   /* ── Mobile ── */
   @media(max-width:600px){
-    header{padding:calc(9px + env(safe-area-inset-top)) 16px 7px}
-    header h1{font-size:1.1rem}
-    .header-byline{font-size:.6rem}
-    .now-showing{font-size:.6rem;line-height:1.25;min-height:1.25em}
-    .menu-btn{font-size:1.2rem}
+    header{padding:calc(12px + env(safe-area-inset-top)) 16px 10px}
+    header h1{font-size:1.3rem}
+    .now-showing{font-size:.65rem;line-height:1.28;min-height:1.28em}
+    .menu-btn{font-size:1.35rem;padding:6px 6px}
     .menu-dropdown{right:16px;width:220px;max-width:calc(100vw - 32px)}
     .menu-item{padding:8px 14px;font-size:.7rem}
     .menu-search input{font-size:.6rem;padding:6px 34px 6px 9px}
     .menu-search-hint{font-size:.5rem}
+    .menu-footer-credit{font-size:.66rem;opacity:.56}
     .lightbox-location{font-size:.75rem;line-height:1.45}
     .lightbox-caption{padding:24px 16px 14px}
     .lightbox-counter{font-size:.6rem;margin-top:5px}
@@ -502,7 +515,7 @@
 
 <header>
   <div class="header-top">
-    <h1 id="titleTap" aria-label="Scroll to top">Japan Spring 2025 <span class="header-byline">&middot; Edward Goss</span></h1>
+    <h1 id="titleTap" aria-label="Scroll to top">Japan Spring 2025</h1>
     <button class="menu-btn" id="menuBtn" aria-label="Filter menu">&#9776;</button>
   </div>
   <div class="now-showing" id="nowShowing"></div>
@@ -1188,6 +1201,15 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     });
     menuDropdown.appendChild(btn);
   });
+
+  const menuFooterDivider=document.createElement('div');
+  menuFooterDivider.className='menu-divider menu-footer-divider';
+  menuDropdown.appendChild(menuFooterDivider);
+
+  const menuFooterCredit=document.createElement('div');
+  menuFooterCredit.className='menu-footer-credit';
+  menuFooterCredit.textContent='\u00a9 Edward Goss';
+  menuDropdown.appendChild(menuFooterCredit);
 
   function positionMenuDropdown(){
     if(!headerEl) return;
