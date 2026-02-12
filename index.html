@@ -441,7 +441,7 @@
     background:rgba(0,0,0,.55);
     backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
     color:rgba(255,255,255,.96);
-    touch-action:manipulation;
+    touch-action:none;
   }
   .lightbox-location{
     font-family:'Libre Baskerville',Georgia,'Times New Roman',serif;
@@ -2320,13 +2320,45 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
   let touchStartX=0;
   let touchIsMulti=false;
+  function isLandscapeTouchViewport(){
+    if(!window.matchMedia('(orientation:landscape)').matches) return false;
+    return navigator.maxTouchPoints>0||window.matchMedia('(hover:none) and (pointer:coarse)').matches;
+  }
+  function hasTouchInCaptionRegion(e){
+    if(!lightbox.classList.contains('active')) return false;
+    if(!isLandscapeTouchViewport()) return false;
+    if(!e.touches||!e.touches.length) return false;
+    var rect=lbCaption.getBoundingClientRect();
+    for(var i=0;i<e.touches.length;i++){
+      var t=e.touches[i];
+      if(
+        t.clientX>=rect.left-1&&
+        t.clientX<=rect.right+1&&
+        t.clientY>=rect.top-1&&
+        t.clientY<=rect.bottom+1
+      ){
+        return true;
+      }
+    }
+    return false;
+  }
   lightbox.addEventListener('touchstart',function(e){
+    if(hasTouchInCaptionRegion(e)){
+      touchIsMulti=true;
+      e.preventDefault();
+      return;
+    }
     touchIsMulti=e.touches.length>1;
     touchStartX=e.changedTouches[0].screenX;
-  },{passive:true});
+  },{passive:false});
   lightbox.addEventListener('touchmove',function(e){
+    if(hasTouchInCaptionRegion(e)){
+      touchIsMulti=true;
+      e.preventDefault();
+      return;
+    }
     if(e.touches.length>1) touchIsMulti=true;
-  },{passive:true});
+  },{passive:false});
   lightbox.addEventListener('touchend',function(e){
     if(touchIsMulti) return;
     const diff=e.changedTouches[0].screenX-touchStartX;
@@ -2334,6 +2366,21 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       navigate(diff>0?-1:1);
     }
   },{passive:true});
+  function isGestureCenterInCaption(e){
+    if(!lightbox.classList.contains('active')) return false;
+    if(!isLandscapeTouchViewport()) return false;
+    var x=typeof e.clientX==='number'?e.clientX:(typeof e.pageX==='number'?e.pageX-window.scrollX:null);
+    var y=typeof e.clientY==='number'?e.clientY:(typeof e.pageY==='number'?e.pageY-window.scrollY:null);
+    if(x===null||y===null) return false;
+    var rect=lbCaption.getBoundingClientRect();
+    return x>=rect.left-1&&x<=rect.right+1&&y>=rect.top-1&&y<=rect.bottom+1;
+  }
+  lightbox.addEventListener('gesturestart',function(e){
+    if(isGestureCenterInCaption(e)) e.preventDefault();
+  },{passive:false});
+  lightbox.addEventListener('gesturechange',function(e){
+    if(isGestureCenterInCaption(e)) e.preventDefault();
+  },{passive:false});
 
   // Keep caption height measurement up to date on resize/rotation
   window.addEventListener('resize',function(){
