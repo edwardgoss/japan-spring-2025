@@ -388,6 +388,7 @@
     transition:opacity .25s ease;
     box-sizing:border-box;
     padding-bottom:var(--caption-h,80px);
+    touch-action:auto;
   }
   .lightbox.active{
     display:flex;
@@ -401,6 +402,7 @@
     border-radius:4px;
     user-select:none;
     -webkit-user-drag:none;
+    touch-action:auto;
   }
 
   .lightbox-close{
@@ -561,7 +563,7 @@
     padding:
       4px
       calc(14px + min(env(safe-area-inset-right), 4px))
-      calc(3px + min(env(safe-area-inset-bottom), 6px))
+      calc(3px + min(env(safe-area-inset-bottom), 10px))
       calc(14px + min(env(safe-area-inset-left), 4px));
     background:rgba(0,0,0,.45);
   }
@@ -584,7 +586,7 @@
       padding:
         6px
         calc(14px + min(env(safe-area-inset-right), 4px))
-        calc(5px + min(env(safe-area-inset-bottom), 6px))
+        calc(5px + min(env(safe-area-inset-bottom), 10px))
         calc(14px + min(env(safe-area-inset-left), 4px));
     }
     html.compact-caption .lightbox-location{
