@@ -334,6 +334,7 @@
     padding:var(--gap);
     max-width:1800px;
     margin:0 auto;
+    overflow:clip;
     transition:opacity .1s ease;
   }
   .gallery.settling{opacity:.98}
@@ -670,6 +671,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const GAP=6;
   const ua=navigator.userAgent||'';
   const isSafariBrowser=/Safari/i.test(ua)&&!/Chrome|CriOS|FxiOS|EdgiOS|OPiOS|OPR|Android/i.test(ua);
+  const isFirefoxBrowser=/Firefox/i.test(ua)&&!/FxiOS/i.test(ua);
   const INITIAL_EAGER = window.innerWidth <= 800 ? (isSafariBrowser ? 14 : 10) : (isSafariBrowser ? 18 : 14);
   const HIGH_PRIORITY_EAGER = isSafariBrowser ? 8 : 6;
   const PRELOAD_AHEAD_TOP = isSafariBrowser ? 200 : 1200;
@@ -738,7 +740,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     if(lazyObserver) lazyObserver.unobserve(img);
   }
 
-  if('IntersectionObserver' in window){
+  if(isSafariBrowser&&'IntersectionObserver' in window){
     lazyObserver=new IntersectionObserver(function(entries){
       entries.forEach(function(entry){
         if(!entry.isIntersecting&&entry.intersectionRatio<=0) return;
@@ -1732,9 +1734,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   }
 
   // ── Image load tracking ──
-  function onImageReady(item){
+  function onImageReady(item,needsLayout){
     item.el.classList.add('loaded');
-    scheduleLayout();
+    if(needsLayout) scheduleLayout();
     requestAnimationFrame(function(){
       requestAnimationFrame(function(){
         item.el.classList.add('revealed');
@@ -1749,9 +1751,10 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       item.el.classList.add('revealed');
     }else{
       item.img.onload=function(){
+        var prevRatio=item.ratio||0;
         item.ratio=item.img.naturalWidth/item.img.naturalHeight;
         item.loaded=true;
-        onImageReady(item);
+        onImageReady(item,Math.abs(item.ratio-prevRatio)>0.0005);
       };
     }
   });
@@ -1794,11 +1797,23 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
   // ── Unified scroll handler ──
   let scrollTicking=false;
+  let lastNowShowingScrollUpdate=0;
+  let nowShowingScrollTimer=null;
+  const NOW_SHOWING_SCROLL_INTERVAL=isFirefoxBrowser?999999:90;
   window.addEventListener('scroll',function(){
+    clearTimeout(nowShowingScrollTimer);
+    nowShowingScrollTimer=setTimeout(function(){
+      updateNowShowing();
+    },isFirefoxBrowser?180:140);
+
     if(!scrollTicking){
       scrollTicking=true;
       requestAnimationFrame(function(){
-        updateNowShowing();
+        var now=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
+        if(!isFirefoxBrowser&&now-lastNowShowingScrollUpdate>=NOW_SHOWING_SCROLL_INTERVAL){
+          updateNowShowing();
+          lastNowShowingScrollUpdate=now;
+        }
         var show=window.scrollY>600;
         if(show!==scrollTopVisible){
           scrollTopVisible=show;
