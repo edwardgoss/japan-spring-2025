@@ -574,8 +574,8 @@
       calc(3px + min(env(safe-area-inset-bottom), 10px))
       calc(14px + min(env(safe-area-inset-left), 4px));
     background:rgba(0,0,0,.45);
-    /* Keep pinch gestures anchored to the image, not caption text. */
-    pointer-events:none;
+    /* Keep caption hit-testable so touch-action:none can suppress pinch here. */
+    pointer-events:auto;
     -webkit-user-select:none;
     user-select:none;
     -webkit-touch-callout:none;
@@ -596,7 +596,7 @@
   /* Touch landscape: keep pinch and swipes anchored to the image, not caption text. */
   @media (orientation: landscape) and (hover: none) and (pointer: coarse){
     .lightbox-caption{
-      pointer-events:none;
+      pointer-events:auto;
       -webkit-user-select:none;
       user-select:none;
       -webkit-touch-callout:none;
