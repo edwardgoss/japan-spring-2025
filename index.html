@@ -1831,6 +1831,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
   let resizeTimer;
   let pendingLayoutAfterLightbox=false;
+  let lightboxSettleTimerA=null;
+  let lightboxSettleTimerB=null;
+  let lightboxSettleToken=0;
   let orientationSettleUntil=0;
   let orientationFinalizeTimer=null;
   let orientationUiTimer=null;
@@ -1861,23 +1864,36 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   }
 
   function scheduleLayoutAfterLightbox(anchor,ensureVisibleIndex){
+    lightboxSettleToken++;
+    var settleToken=lightboxSettleToken;
+    var baselineScrollY=window.scrollY||0;
+    function userHasScrolledSinceClose(){
+      return Math.abs((window.scrollY||0)-baselineScrollY)>14;
+    }
     function run(){
+      if(settleToken!==lightboxSettleToken) return;
       layout();
-      if(anchor){
-        withSuppressedAnchorTracking(function(){
-          restoreGalleryScrollAnchor(anchor);
-        });
-        preferredRotationAnchorIndex=anchor.index;
-      }
-      if(typeof ensureVisibleIndex==='number'&&ensureVisibleIndex>=0&&!isPhotoVisibleInGalleryViewport(ensureVisibleIndex)){
-        scrollPhotoToGalleryViewport(ensureVisibleIndex);
-        preferredRotationAnchorIndex=ensureVisibleIndex;
+      if(!userHasScrolledSinceClose()){
+        if(anchor){
+          withSuppressedAnchorTracking(function(){
+            restoreGalleryScrollAnchor(anchor);
+          });
+          preferredRotationAnchorIndex=anchor.index;
+          baselineScrollY=window.scrollY||0;
+        }
+        if(typeof ensureVisibleIndex==='number'&&ensureVisibleIndex>=0&&!isPhotoVisibleInGalleryViewport(ensureVisibleIndex)){
+          scrollPhotoToGalleryViewport(ensureVisibleIndex);
+          preferredRotationAnchorIndex=ensureVisibleIndex;
+          baselineScrollY=window.scrollY||0;
+        }
       }
       updateNowShowing();
     }
     clearTimeout(resizeTimer);
-    resizeTimer=setTimeout(run,200);
-    setTimeout(run,600);
+    clearTimeout(lightboxSettleTimerA);
+    clearTimeout(lightboxSettleTimerB);
+    lightboxSettleTimerA=setTimeout(run,200);
+    lightboxSettleTimerB=setTimeout(run,600);
   }
   function applyAnchoredRelayout(anchor){
     layout();
