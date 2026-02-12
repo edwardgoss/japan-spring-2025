@@ -1860,10 +1860,24 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     }
   }
 
-  function scheduleLayoutAfterLightbox(){
+  function scheduleLayoutAfterLightbox(anchor,ensureVisibleIndex){
+    function run(){
+      layout();
+      if(anchor){
+        withSuppressedAnchorTracking(function(){
+          restoreGalleryScrollAnchor(anchor);
+        });
+        preferredRotationAnchorIndex=anchor.index;
+      }
+      if(typeof ensureVisibleIndex==='number'&&ensureVisibleIndex>=0&&!isPhotoVisibleInGalleryViewport(ensureVisibleIndex)){
+        scrollPhotoToGalleryViewport(ensureVisibleIndex);
+        preferredRotationAnchorIndex=ensureVisibleIndex;
+      }
+      updateNowShowing();
+    }
     clearTimeout(resizeTimer);
-    resizeTimer=setTimeout(layout,200);
-    setTimeout(layout,600);
+    resizeTimer=setTimeout(run,200);
+    setTimeout(run,600);
   }
   function applyAnchoredRelayout(anchor){
     layout();
@@ -2002,6 +2016,36 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     return 'full_photos/Japan_Spring-2025_'+String(idx+1).padStart(3,'0')+'.webp';
   }
 
+  function getGalleryPhotoMetrics(idx){
+    if(typeof idx!=='number'||idx<0||idx>=items.length) return null;
+    var el=items[idx].el;
+    var galleryTop=gallery.getBoundingClientRect().top+window.scrollY;
+    var itemTop=parseFloat(el.style.top);
+    if(!Number.isFinite(itemTop)) return null;
+    var top=itemTop+galleryTop;
+    var h=el.offsetHeight||el.getBoundingClientRect().height||0;
+    return{
+      top:top,
+      bottom:top+h
+    };
+  }
+
+  function isPhotoVisibleInGalleryViewport(idx){
+    var m=getGalleryPhotoMetrics(idx);
+    if(!m) return false;
+    var headerH=document.querySelector('header').offsetHeight;
+    var viewportTop=window.scrollY+headerH+10;
+    var viewportBottom=window.scrollY+window.innerHeight-10;
+    return m.bottom>viewportTop&&m.top<viewportBottom;
+  }
+
+  function scrollPhotoToGalleryViewport(idx){
+    var m=getGalleryPhotoMetrics(idx);
+    if(!m) return;
+    var headerH=document.querySelector('header').offsetHeight;
+    window.scrollTo({top:Math.max(0,m.top-headerH-10),behavior:'instant'});
+  }
+
   function openLightbox(){
     const realIdx=filtered[current];
     const photoNum=realIdx+1;
@@ -2046,6 +2090,12 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   }
 
   function closeLightbox(){
+    var didNavigate=current!==lightboxOpenCurrent;
+    var viewportChanged=document.documentElement.clientWidth!==lightboxOpenWidth;
+    var hadRotation=lightboxRotatedWhileOpen;
+    var targetIndex=(current>=0&&current<filtered.length)?filtered[current]:-1;
+    var shouldSyncToTarget=(didNavigate||viewportChanged||hadRotation)&&targetIndex>=0;
+
     clearCaptionClampTimers();
     lightbox.classList.remove('active','loading');
     document.body.style.overflow='';
@@ -2053,25 +2103,28 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     lightbox.style.removeProperty('--caption-h');
     resetCaptionClamp();
 
+    // Re-layout immediately so scroll decisions use the current geometry.
+    layout();
+
+    var postCloseAnchor=null;
+    if(shouldSyncToTarget){
+      if(!isPhotoVisibleInGalleryViewport(targetIndex)){
+        scrollPhotoToGalleryViewport(targetIndex);
+        postCloseAnchor={index:targetIndex,offset:0};
+      }else{
+        postCloseAnchor=captureGalleryScrollAnchor(false);
+      }
+    }else{
+      // No navigation + no viewport change: restore exactly where user left.
+      window.scrollTo({top:lightboxOpenScrollY,behavior:'instant'});
+      postCloseAnchor=captureGalleryScrollAnchor(false);
+    }
+
     lightboxRotatedWhileOpen=false;
 
-    // Re-layout in case viewport changed while lightbox was open
+    // Re-layout follow-up in case viewport continues settling after close.
     pendingLayoutAfterLightbox=false;
-    scheduleLayoutAfterLightbox();
-
-    // Scroll to current photo if user navigated OR viewport changed (orientation)
-    var didNavigate=current!==lightboxOpenCurrent;
-    var viewportChanged=document.documentElement.clientWidth!==lightboxOpenWidth;
-    if((didNavigate||viewportChanged)&&current>=0&&current<filtered.length){
-      var el=items[filtered[current]].el;
-      var headerH=document.querySelector('header').offsetHeight;
-      var galleryTop=gallery.getBoundingClientRect().top+window.scrollY;
-      var photoTop=parseFloat(el.style.top)+galleryTop;
-      window.scrollTo({top:photoTop-headerH-10,behavior:'instant'});
-    } else {
-      // No navigation, no rotation — just restore exactly where we were
-      window.scrollTo({top:lightboxOpenScrollY,behavior:'instant'});
-    }
+    scheduleLayoutAfterLightbox(postCloseAnchor,shouldSyncToTarget?targetIndex:-1);
   }
 
   function navigate(dir){
