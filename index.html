@@ -606,6 +606,36 @@
 <script>
 if('scrollRestoration' in history) history.scrollRestoration='manual';
 
+// Force fresh loads/reloads to start at top (Safari inactivity refresh included).
+(function(){
+  var navEntries=(typeof performance!=='undefined'&&performance.getEntriesByType)?performance.getEntriesByType('navigation'):null;
+  var navEntry=(navEntries&&navEntries[0])||null;
+  var navType=navEntry&&navEntry.type?navEntry.type:'navigate';
+  var hasHash=!!(window.location.hash&&window.location.hash!=='#');
+  var shouldForceTop=!hasHash&&navType!=='back_forward';
+  if(!shouldForceTop) return;
+
+  function forceTop(){
+    window.scrollTo({top:0,left:0,behavior:'instant'});
+  }
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',forceTop,{once:true});
+  }else{
+    forceTop();
+  }
+
+  window.addEventListener('load',function(){
+    forceTop();
+    setTimeout(forceTop,120);
+  });
+  window.addEventListener('pageshow',function(e){
+    if(e.persisted) return;
+    forceTop();
+    setTimeout(forceTop,120);
+  });
+})();
+
 // Keep content offset in sync with fixed header height.
 (function(){
   var headerEl=document.querySelector('header');
@@ -1419,20 +1449,44 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
 
   // ── Filter logic ──
-  function getTopVisibleIndex(){
-    // Find which filtered photo is closest to just below the header
+  const GALLERY_ANCHOR_SCAN_OFFSET=20;
+  function captureGalleryScrollAnchor(includeAtTop){
+    if(!includeAtTop&&window.scrollY<=1) return null;
     var headerH=document.querySelector('header').offsetHeight;
-    var scanY=headerH+20;
-    var bestIdx=-1, bestDist=Infinity;
+    var scanY=headerH+GALLERY_ANCHOR_SCAN_OFFSET;
+    var best=null;
+    var bestDist=Infinity;
     for(var fi=0;fi<filtered.length;fi++){
-      var rect=items[filtered[fi]].el.getBoundingClientRect();
+      var idx=filtered[fi];
+      var rect=items[idx].el.getBoundingClientRect();
+      if(rect.bottom<=headerH) continue;
       var dist=Math.abs(rect.top-scanY);
-      if(rect.bottom>headerH&&dist<bestDist){
+      if(dist<bestDist){
         bestDist=dist;
-        bestIdx=filtered[fi];
+        best={index:idx,offset:scanY-rect.top};
       }
     }
-    return bestIdx;
+    return best;
+  }
+
+  function restoreGalleryScrollAnchor(anchor){
+    if(!anchor) return;
+    var idx=anchor.index;
+    if(typeof idx!=='number'||idx<0||idx>=items.length) return;
+    var el=items[idx].el;
+    var headerH=document.querySelector('header').offsetHeight;
+    var scanY=headerH+GALLERY_ANCHOR_SCAN_OFFSET;
+    var galleryTop=gallery.getBoundingClientRect().top+window.scrollY;
+    var itemTop=parseFloat(el.style.top);
+    if(!Number.isFinite(itemTop)) return;
+    var photoTop=itemTop+galleryTop;
+    var target=photoTop+anchor.offset-scanY;
+    window.scrollTo({top:Math.max(0,target),behavior:'instant'});
+  }
+
+  function getTopVisibleIndex(){
+    var anchor=captureGalleryScrollAnchor(true);
+    return anchor?anchor.index:-1;
   }
 
   function setFilter(city){
@@ -1764,18 +1818,68 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
   let resizeTimer;
   let pendingLayoutAfterLightbox=false;
+  let orientationSettleUntil=0;
+  let orientationFinalizeTimer=null;
+  let preferredRotationAnchorIndex=-1;
+  let suppressAnchorTrackingScroll=false;
+
+  function updatePreferredRotationAnchor(){
+    var anchor=captureGalleryScrollAnchor(true);
+    preferredRotationAnchorIndex=anchor?anchor.index:-1;
+  }
+
+  function withSuppressedAnchorTracking(fn){
+    suppressAnchorTrackingScroll=true;
+    try{
+      fn();
+    }finally{
+      setTimeout(function(){
+        suppressAnchorTrackingScroll=false;
+      },120);
+    }
+  }
+
   function scheduleLayoutAfterLightbox(){
     clearTimeout(resizeTimer);
     resizeTimer=setTimeout(layout,200);
     setTimeout(layout,600);
+  }
+  function scheduleAnchoredRelayout(delay,forcedAnchorIndex){
+    var anchor=null;
+    if(typeof forcedAnchorIndex==='number'&&forcedAnchorIndex>=0&&forcedAnchorIndex<items.length){
+      anchor={index:forcedAnchorIndex,offset:0};
+    }else{
+      anchor=captureGalleryScrollAnchor(false);
+    }
+    clearTimeout(resizeTimer);
+    resizeTimer=setTimeout(function(){
+      layout();
+      if(anchor){
+        withSuppressedAnchorTracking(function(){
+          restoreGalleryScrollAnchor(anchor);
+        });
+      }
+      updateNowShowing();
+      if(anchor) preferredRotationAnchorIndex=anchor.index;
+    },delay);
+  }
+  function scheduleOrientationFinalize(){
+    clearTimeout(orientationFinalizeTimer);
+    orientationFinalizeTimer=setTimeout(function(){
+      if(lightbox.classList.contains('active')) return;
+      scheduleAnchoredRelayout(0,preferredRotationAnchorIndex);
+    },360);
   }
   window.addEventListener('resize',function(){
     if(lightbox.classList.contains('active')){
       pendingLayoutAfterLightbox=true;
       return;
     }
-    clearTimeout(resizeTimer);
-    resizeTimer=setTimeout(layout,100);
+    var inOrientationSettle=Date.now()<orientationSettleUntil;
+    var delay=inOrientationSettle?20:100;
+    var forced=Date.now()<orientationSettleUntil?preferredRotationAnchorIndex:null;
+    scheduleAnchoredRelayout(delay,forced);
+    if(inOrientationSettle) scheduleOrientationFinalize();
   });
   if(window.visualViewport){
     window.visualViewport.addEventListener('resize',function(){
@@ -1783,10 +1887,25 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
         pendingLayoutAfterLightbox=true;
         return;
       }
-      clearTimeout(resizeTimer);
-      resizeTimer=setTimeout(layout,100);
+      var inOrientationSettle=Date.now()<orientationSettleUntil;
+      var delay=inOrientationSettle?20:100;
+      var forced=Date.now()<orientationSettleUntil?preferredRotationAnchorIndex:null;
+      scheduleAnchoredRelayout(delay,forced);
+      if(inOrientationSettle) scheduleOrientationFinalize();
     });
   }
+  window.addEventListener('orientationchange',function(){
+    orientationSettleUntil=Date.now()+420;
+    if(lightbox.classList.contains('active')){
+      pendingLayoutAfterLightbox=true;
+      return;
+    }
+    if(preferredRotationAnchorIndex<0){
+      updatePreferredRotationAnchor();
+    }
+    scheduleAnchoredRelayout(0,preferredRotationAnchorIndex);
+    scheduleOrientationFinalize();
+  });
 
   // ── Scroll to top button ──
   const scrollTopBtn=document.getElementById('scrollTop');
@@ -1810,6 +1929,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       scrollTicking=true;
       requestAnimationFrame(function(){
         var now=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
+        if(!suppressAnchorTrackingScroll&&!lightbox.classList.contains('active')){
+          updatePreferredRotationAnchor();
+        }
         if(!isFirefoxBrowser&&now-lastNowShowingScrollUpdate>=NOW_SHOWING_SCROLL_INTERVAL){
           updateNowShowing();
           lastNowShowingScrollUpdate=now;
