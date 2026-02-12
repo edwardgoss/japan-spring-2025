@@ -432,7 +432,11 @@
     position:absolute;bottom:0;left:0;right:0;
     text-align:center;
     z-index:110;
-    padding:28px 20px 18px;
+    padding:
+      28px
+      calc(20px + env(safe-area-inset-right))
+      calc(18px + env(safe-area-inset-bottom))
+      calc(20px + env(safe-area-inset-left));
     background:rgba(0,0,0,.55);
     backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
     color:rgba(255,255,255,.96);
@@ -554,7 +558,11 @@
 
   /* ── Compact caption: mobile landscape, short viewport (JS-driven) ── */
   html.compact-caption .lightbox-caption{
-    padding:4px 14px 3px;
+    padding:
+      4px
+      calc(14px + env(safe-area-inset-right))
+      calc(3px + env(safe-area-inset-bottom))
+      calc(14px + env(safe-area-inset-left));
     background:rgba(0,0,0,.45);
   }
   html.compact-caption .lightbox-location{
@@ -568,6 +576,28 @@
   html.compact-caption .lightbox-counter{
     font-size:.45rem;
     margin-top:1px;
+  }
+
+  /* Phone landscape: lift compact lightbox caption legibility slightly */
+  @media (orientation: landscape) and (max-width: 950px) and (max-height: 500px){
+    html.compact-caption .lightbox-caption{
+      padding:
+        6px
+        calc(14px + env(safe-area-inset-right))
+        calc(5px + env(safe-area-inset-bottom))
+        calc(14px + env(safe-area-inset-left));
+    }
+    html.compact-caption .lightbox-location{
+      font-size:.62rem;
+      line-height:1.36;
+    }
+    html.compact-caption .lightbox-city{opacity:.62}
+    html.compact-caption .lightbox-place{opacity:.9}
+    html.compact-caption .lightbox-counter{
+      font-size:.52rem;
+      margin-top:2px;
+      color:rgba(255,255,255,.42);
+    }
   }
 
   @media (max-width: 600px) and (hover: none) and (pointer: coarse){
