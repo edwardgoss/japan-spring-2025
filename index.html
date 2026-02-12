@@ -162,7 +162,7 @@
     overflow:hidden;
     text-overflow:ellipsis;
     letter-spacing:.02em;
-    transition:opacity .15s ease-out;
+    transition:opacity .18s ease-in-out;
     transform:translate3d(0,0,0);
     will-change:opacity;
     -webkit-font-smoothing:antialiased;
@@ -1614,7 +1614,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   let nowShowingInTransition = false;
   let pendingNowShowingKey = '';
   let pendingNowShowingCity = '';
-  const NOW_SHOWING_FADE_MS = 150; // keep in sync with CSS
+  const NOW_SHOWING_FADE_MS = 180; // keep in sync with CSS
 
   function applyNowShowingImmediate(city, key){
     lastShownKey = key;
@@ -1954,12 +1954,15 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   let scrollTicking=false;
   let lastNowShowingScrollUpdate=0;
   let nowShowingScrollTimer=null;
-  const NOW_SHOWING_SCROLL_INTERVAL=isFirefoxBrowser?999999:90;
+  const NOW_SHOWING_SCROLL_INTERVAL=isFirefoxBrowser?999999:70;
+  const NOW_SHOWING_SCROLL_FALLBACK_MS=isFirefoxBrowser?150:80;
   window.addEventListener('scroll',function(){
-    clearTimeout(nowShowingScrollTimer);
-    nowShowingScrollTimer=setTimeout(function(){
-      updateNowShowing();
-    },isFirefoxBrowser?180:140);
+    if(!nowShowingScrollTimer){
+      nowShowingScrollTimer=setTimeout(function(){
+        nowShowingScrollTimer=null;
+        updateNowShowing();
+      },NOW_SHOWING_SCROLL_FALLBACK_MS);
+    }
 
     if(!scrollTicking){
       scrollTicking=true;
