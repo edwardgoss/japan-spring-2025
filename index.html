@@ -88,11 +88,6 @@
     padding:calc(11px + env(safe-area-inset-top)) 24px 9px;
     text-align:center;
     isolation:isolate;
-    transform:translateZ(0);
-    -webkit-transform:translateZ(0);
-    will-change:transform;
-    backface-visibility:hidden;
-    -webkit-backface-visibility:hidden;
   }
   html.orientation-settling header{
     backdrop-filter:none;
@@ -344,7 +339,8 @@
     padding:var(--gap);
     max-width:1800px;
     margin:0 auto;
-    overflow:clip;
+    overflow:hidden;
+    background:var(--bg);
     transition:opacity .1s ease;
   }
   .gallery.settling{opacity:.98}
@@ -666,11 +662,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   window.addEventListener('orientationchange',function(){
     syncHeaderOffset();
   });
-  if(window.visualViewport){
-    window.visualViewport.addEventListener('resize',function(){
-      setTimeout(updateHeaderOffset,60);
-    });
-  }
   if(typeof ResizeObserver!=='undefined'){
     new ResizeObserver(updateHeaderOffset).observe(headerEl);
   }
@@ -716,13 +707,19 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const TOTAL=227;
   const GAP=6;
   const ua=navigator.userAgent||'';
+  const isIOSLike=/iPad|iPhone|iPod/i.test(ua)||((navigator.platform||'')==='MacIntel'&&navigator.maxTouchPoints>1);
+  const isIPadLike=/iPad/i.test(ua)||((navigator.platform||'')==='MacIntel'&&navigator.maxTouchPoints>1);
   const isSafariBrowser=/Safari/i.test(ua)&&!/Chrome|CriOS|FxiOS|EdgiOS|OPiOS|OPR|Android/i.test(ua);
   const isFirefoxBrowser=/Firefox/i.test(ua)&&!/FxiOS/i.test(ua);
-  const INITIAL_EAGER = window.innerWidth <= 800 ? (isSafariBrowser ? 14 : 10) : (isSafariBrowser ? 18 : 14);
-  const HIGH_PRIORITY_EAGER = isSafariBrowser ? 8 : 6;
-  const PRELOAD_AHEAD_TOP = isSafariBrowser ? 200 : 1200;
-  const PRELOAD_AHEAD_BOTTOM = isSafariBrowser ? 2200 : 1200;
-  const PROMO_CAP_SAFARI = isSafariBrowser ? (window.innerWidth <= 800 ? 10 : 14) : 0;
+  const INITIAL_EAGER = isIOSLike
+    ? (isIPadLike?12:10)
+    : (window.innerWidth <= 800 ? (isSafariBrowser ? 14 : 10) : (isSafariBrowser ? 18 : 14));
+  const HIGH_PRIORITY_EAGER = isIOSLike ? 4 : (isSafariBrowser ? 8 : 6);
+  const PRELOAD_AHEAD_TOP = isIOSLike ? 120 : (isSafariBrowser ? 200 : 1200);
+  const PRELOAD_AHEAD_BOTTOM = isIOSLike ? (isIPadLike?900:700) : (isSafariBrowser ? 2200 : 1200);
+  const PROMO_CAP_SAFARI = isSafariBrowser
+    ? (isIOSLike ? (isIPadLike?8:6) : (window.innerWidth <= 800 ? 10 : 14))
+    : 0;
   const RATIO_CODES='LPLPLPTPPLLPLLLPPPPPLPLLPPPLLLLWPTPPLPPLLLPTLPLPPWTLPLWPLLLPPPPTTWTPPTLPLPPLLLPLLLLWLPLPPLLTPPPLPLLLLPPLLLPPLPPLPTWPLPPLLPLLPPLLLPLPLLWLLLLPLWWPPLPLPPPLLTTWPLPLLLPLPWPLLLLLLLLPLLLLPLLLLLLLLWPLLLTPLPPPLLPLPPLLPLLLLLLLLLWLWTWTWTL';
   const RATIO_PRESETS={
     L:{w:2048,h:1365,ratio:2048/1365},
@@ -1843,7 +1840,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   let suppressAnchorTrackingScroll=false;
 
   function getLayoutViewportWidth(){
-    var w=window.visualViewport&&window.visualViewport.width?window.visualViewport.width:document.documentElement.clientWidth;
+    var w=document.documentElement.clientWidth||window.innerWidth;
     return Math.round(w);
   }
 
@@ -1930,20 +1927,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     scheduleAnchoredRelayout(delay,forced);
     if(inOrientationSettle) scheduleOrientationFinalize();
   });
-  if(window.visualViewport){
-    window.visualViewport.addEventListener('resize',function(){
-      if(lightbox.classList.contains('active')){
-        pendingLayoutAfterLightbox=true;
-        return;
-      }
-      var inOrientationSettle=Date.now()<orientationSettleUntil;
-      if(!shouldRunResizeRelayout(inOrientationSettle)) return;
-      var delay=inOrientationSettle?0:100;
-      var forced=Date.now()<orientationSettleUntil?preferredRotationAnchorIndex:null;
-      scheduleAnchoredRelayout(delay,forced);
-      if(inOrientationSettle) scheduleOrientationFinalize();
-    });
-  }
   window.addEventListener('orientationchange',function(){
     orientationSettleUntil=Date.now()+420;
     lastRelayoutViewportWidth=getLayoutViewportWidth();
