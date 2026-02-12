@@ -66,6 +66,7 @@
     -webkit-text-size-adjust:100%;
     text-size-adjust:100%;
     overflow-x:hidden;
+    background:var(--bg);
   }
   body{
     background:var(--bg);
@@ -87,6 +88,15 @@
     padding:calc(11px + env(safe-area-inset-top)) 24px 9px;
     text-align:center;
     isolation:isolate;
+    transform:translateZ(0);
+    -webkit-transform:translateZ(0);
+    will-change:transform;
+    backface-visibility:hidden;
+    -webkit-backface-visibility:hidden;
+  }
+  html.orientation-settling header{
+    backdrop-filter:none;
+    -webkit-backdrop-filter:none;
   }
   header::before{
     content:"";
@@ -339,11 +349,6 @@
   }
   .gallery.settling{opacity:.98}
   .gallery.settling-deep{opacity:.95;transition:opacity .18s ease}
-  .gallery.rotation-hold{
-    opacity:.985;
-    transition:opacity .06s linear !important;
-    pointer-events:none;
-  }
 
   .gallery-item{
     position:absolute;
@@ -649,15 +654,21 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   function updateHeaderOffset(){
     document.documentElement.style.setProperty('--header-offset',headerEl.offsetHeight+'px');
   }
+  function syncHeaderOffset(){
+    updateHeaderOffset();
+    requestAnimationFrame(updateHeaderOffset);
+    setTimeout(updateHeaderOffset,90);
+    setTimeout(updateHeaderOffset,260);
+  }
 
-  updateHeaderOffset();
+  syncHeaderOffset();
   window.addEventListener('resize',updateHeaderOffset);
   window.addEventListener('orientationchange',function(){
-    setTimeout(updateHeaderOffset,320);
+    syncHeaderOffset();
   });
   if(window.visualViewport){
     window.visualViewport.addEventListener('resize',function(){
-      setTimeout(updateHeaderOffset,80);
+      setTimeout(updateHeaderOffset,60);
     });
   }
   if(typeof ResizeObserver!=='undefined'){
@@ -1825,7 +1836,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   let pendingLayoutAfterLightbox=false;
   let orientationSettleUntil=0;
   let orientationFinalizeTimer=null;
-  let rotationPaintHoldTimer=null;
+  let orientationUiTimer=null;
   let preferredRotationAnchorIndex=-1;
   let lastRelayoutViewportWidth=0;
   let rotationAnchorLocked=false;
@@ -1887,15 +1898,15 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     orientationFinalizeTimer=setTimeout(function(){
       if(lightbox.classList.contains('active')) return;
       scheduleAnchoredRelayout(0,preferredRotationAnchorIndex);
-      gallery.classList.remove('rotation-hold');
+      document.documentElement.classList.remove('orientation-settling');
     },360);
   }
-  function startRotationPaintHold(){
-    gallery.classList.add('rotation-hold');
-    clearTimeout(rotationPaintHoldTimer);
-    rotationPaintHoldTimer=setTimeout(function(){
-      gallery.classList.remove('rotation-hold');
-    },240);
+  function startOrientationUiSettle(){
+    document.documentElement.classList.add('orientation-settling');
+    clearTimeout(orientationUiTimer);
+    orientationUiTimer=setTimeout(function(){
+      document.documentElement.classList.remove('orientation-settling');
+    },520);
   }
 
   lastRelayoutViewportWidth=getLayoutViewportWidth();
@@ -1936,6 +1947,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   window.addEventListener('orientationchange',function(){
     orientationSettleUntil=Date.now()+420;
     lastRelayoutViewportWidth=getLayoutViewportWidth();
+    startOrientationUiSettle();
     if(lightbox.classList.contains('active')){
       pendingLayoutAfterLightbox=true;
       return;
@@ -1944,7 +1956,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       updatePreferredRotationAnchor();
     }
     rotationAnchorLocked=true;
-    startRotationPaintHold();
     scheduleAnchoredRelayout(0,preferredRotationAnchorIndex);
     scheduleOrientationFinalize();
   });
