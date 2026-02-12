@@ -383,20 +383,26 @@
     position:fixed;inset:0;z-index:100;
     background:var(--lightbox-bg);
     display:none;
-    align-items:center;
-    justify-content:center;
+    grid-template-rows:minmax(0,1fr) auto;
+    align-items:stretch;
+    justify-items:stretch;
     opacity:0;
     transition:opacity .25s ease;
     touch-action:pinch-zoom;
+    overflow:hidden;
   }
   .lightbox.active{
-    display:flex;
+    display:grid;
     opacity:1;
   }
   .lightbox img{
+    grid-row:1;
+    align-self:center;
+    justify-self:center;
     max-width:92vw;
-    max-height:calc(100vh - var(--caption-h,80px) - 24px);
-    max-height:calc(100dvh - var(--caption-h,80px) - 24px);
+    max-height:calc(100vh - var(--caption-h,80px) - (var(--lightbox-photo-gap) * 2));
+    max-height:calc(100dvh - var(--caption-h,80px) - (var(--lightbox-photo-gap) * 2));
+    margin-block:var(--lightbox-photo-gap);
     object-fit:contain;
     border-radius:4px;
     user-select:none;
@@ -430,7 +436,9 @@
   .lightbox-next{right:max(12px, env(safe-area-inset-right))}
 
   .lightbox-caption{
-    position:absolute;bottom:0;left:0;right:0;
+    position:relative;
+    grid-row:2;
+    width:100%;
     text-align:center;
     z-index:110;
     padding:
@@ -585,13 +593,8 @@
     margin-top:1px;
   }
 
-  /* Touch landscape: keep image centered above caption and keep pinch on photo area. */
+  /* Touch landscape: keep pinch and swipes anchored to the image, not caption text. */
   @media (orientation: landscape) and (hover: none) and (pointer: coarse){
-    .lightbox img{
-      max-height:calc(100vh - var(--caption-h,80px) - (var(--lightbox-photo-gap) * 2));
-      max-height:calc(100dvh - var(--caption-h,80px) - (var(--lightbox-photo-gap) * 2));
-      transform:translateY(calc(var(--caption-h,80px) / -2));
-    }
     .lightbox-caption{
       pointer-events:none;
       -webkit-user-select:none;
