@@ -1866,8 +1866,13 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   function scheduleLayoutAfterLightbox(){
     lightboxSettleToken++;
     var settleToken=lightboxSettleToken;
+    var baselineScrollY=window.scrollY||0;
+    function userHasScrolledSinceClose(){
+      return Math.abs((window.scrollY||0)-baselineScrollY)>2;
+    }
     function run(){
       if(settleToken!==lightboxSettleToken) return;
+      if(userHasScrolledSinceClose()) return;
       layout();
       // Post-close settle passes should never move scroll; immediate close logic
       // already handled target sync and visibility decisions.
