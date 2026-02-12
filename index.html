@@ -672,7 +672,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const isSafariBrowser=/Safari/i.test(ua)&&!/Chrome|CriOS|FxiOS|EdgiOS|OPiOS|OPR|Android/i.test(ua);
   const INITIAL_EAGER = window.innerWidth <= 800 ? (isSafariBrowser ? 14 : 10) : (isSafariBrowser ? 18 : 14);
   const HIGH_PRIORITY_EAGER = isSafariBrowser ? 8 : 6;
-  const PRELOAD_AHEAD_MARGIN = isSafariBrowser ? 2200 : 1200;
+  const PRELOAD_AHEAD_TOP = isSafariBrowser ? 200 : 1200;
+  const PRELOAD_AHEAD_BOTTOM = isSafariBrowser ? 2200 : 1200;
+  const PROMO_CAP_SAFARI = isSafariBrowser ? (window.innerWidth <= 800 ? 10 : 14) : 0;
   const RATIO_CODES='LPLPLPTPPLLPLLLPPPPPLPLLPPPLLLLWPTPPLPPLLLPTLPLPPWTLPLWPLLLPPPPTTWTPPTLPLPPLLLPLLLLWLPLPPLLTPPPLPLLLLPPLLLPPLPPLPTWPLPPLLPLLPPLLLPLPLLWLLLLPLWWPPLPLPPPLLTTWPLPLLLPLPWPLLLLLLLLPLLLLPLLLLLLLLWPLLLTPLPPPLLPLPPLLPLLLLLLLLLWLWTWTWTL';
   const RATIO_PRESETS={
     L:{w:2048,h:1365,ratio:2048/1365},
@@ -680,23 +682,74 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     W:{w:2048,h:1536,ratio:2048/1536},
     T:{w:1536,h:2048,ratio:1536/2048}
   };
-  const lazyObserver=('IntersectionObserver' in window)
-    ? new IntersectionObserver(function(entries){
-        entries.forEach(function(entry){
-          if(!entry.isIntersecting&&entry.intersectionRatio<=0) return;
-          const img=entry.target;
-          if(img.dataset.src){
-            img.src=img.dataset.src;
-            img.removeAttribute('data-src');
-          }
-          lazyObserver.unobserve(img);
-        });
-      },{
-        root:null,
-        rootMargin:PRELOAD_AHEAD_MARGIN+'px 0px '+PRELOAD_AHEAD_MARGIN+'px 0px',
-        threshold:0.01
-      })
-    : null;
+  const inFlightPromotions=new Set();
+  const pendingPromotionQueue=[];
+  const pendingPromotionSet=new Set();
+  let lazyObserver=null;
+
+  function drainPromotionQueue(){
+    if(!isSafariBrowser) return;
+    while(inFlightPromotions.size<PROMO_CAP_SAFARI&&pendingPromotionQueue.length){
+      const next=pendingPromotionQueue.shift();
+      pendingPromotionSet.delete(next);
+      if(next&&next.dataset&&next.dataset.src){
+        promoteObservedImage(next);
+      }
+    }
+  }
+
+  function promoteObservedImage(img){
+    if(!img) return;
+    if(!img.dataset.src){
+      if(lazyObserver) lazyObserver.unobserve(img);
+      return;
+    }
+
+    if(isSafariBrowser){
+      if(inFlightPromotions.size>=PROMO_CAP_SAFARI){
+        if(!pendingPromotionSet.has(img)){
+          pendingPromotionSet.add(img);
+          pendingPromotionQueue.push(img);
+        }
+        return;
+      }
+
+      inFlightPromotions.add(img);
+      var released=false;
+      function releasePromotion(){
+        if(released) return;
+        released=true;
+        inFlightPromotions.delete(img);
+        img.removeEventListener('load',releasePromotion);
+        img.removeEventListener('error',releasePromotion);
+        drainPromotionQueue();
+      }
+      img.addEventListener('load',releasePromotion);
+      img.addEventListener('error',releasePromotion);
+      img.src=img.dataset.src;
+      img.removeAttribute('data-src');
+      if(lazyObserver) lazyObserver.unobserve(img);
+      if(img.complete) setTimeout(releasePromotion,0);
+      return;
+    }
+
+    img.src=img.dataset.src;
+    img.removeAttribute('data-src');
+    if(lazyObserver) lazyObserver.unobserve(img);
+  }
+
+  if('IntersectionObserver' in window){
+    lazyObserver=new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(!entry.isIntersecting&&entry.intersectionRatio<=0) return;
+        promoteObservedImage(entry.target);
+      });
+    },{
+      root:null,
+      rootMargin:PRELOAD_AHEAD_TOP+'px 0px '+PRELOAD_AHEAD_BOTTOM+'px 0px',
+      threshold:0.01
+    });
+  }
 
   // ── City ranges ──
   const CITY_RANGES=[
