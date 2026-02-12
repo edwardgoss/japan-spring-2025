@@ -808,6 +808,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const isIPadLike=/iPad/i.test(ua)||((navigator.platform||'')==='MacIntel'&&navigator.maxTouchPoints>1);
   const isSafariBrowser=/Safari/i.test(ua)&&!/Chrome|CriOS|FxiOS|EdgiOS|OPiOS|OPR|Android/i.test(ua);
   const isFirefoxBrowser=/Firefox/i.test(ua)&&!/FxiOS/i.test(ua);
+  const isChromeMobileBrowser=/Chrome|CriOS/i.test(ua)&&!/EdgA|EdgiOS|OPR|OPiOS|SamsungBrowser|YaBrowser|UCBrowser/i.test(ua)&&(/Android/i.test(ua)||/CriOS/i.test(ua));
   const INITIAL_EAGER = isIOSLike
     ? (isIPadLike?8:9)
     : (window.innerWidth <= 800 ? (isSafariBrowser ? 14 : 10) : (isSafariBrowser ? 18 : 14));
@@ -1942,6 +1943,12 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   let lastRelayoutViewportWidth=0;
   let rotationAnchorLocked=false;
   let suppressAnchorTrackingScroll=false;
+  const viewportMeta=document.querySelector('meta[name="viewport"]');
+  const baseViewportMetaContent=viewportMeta?viewportMeta.getAttribute('content')||'':'';
+  let chromeViewportUnlockTimer=null;
+  let chromeViewportCheckTimerA=null;
+  let chromeViewportCheckTimerB=null;
+  let chromeViewportCheckTimerC=null;
   function isViewportPinchScaled(){
     return !!(window.visualViewport&&typeof window.visualViewport.scale==='number'&&window.visualViewport.scale>1.01);
   }
@@ -1949,6 +1956,53 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   function getLayoutViewportWidth(){
     var w=document.documentElement.clientWidth||window.innerWidth;
     return Math.round(w);
+  }
+
+  function viewportContentWithoutScaleLocks(content){
+    return content.split(',').map(function(part){
+      return part.trim();
+    }).filter(function(part){
+      if(!part) return false;
+      return !/^maximum-scale\s*=|^minimum-scale\s*=|^user-scalable\s*=/i.test(part);
+    }).join(', ');
+  }
+
+  function setChromeViewportScaleLock(lockScale){
+    if(!isChromeMobileBrowser||!viewportMeta||!baseViewportMetaContent) return;
+    if(!lockScale){
+      viewportMeta.setAttribute('content',baseViewportMetaContent);
+      return;
+    }
+    var unlocked=viewportContentWithoutScaleLocks(baseViewportMetaContent);
+    var lockTokens='maximum-scale=1, minimum-scale=1, user-scalable=no';
+    viewportMeta.setAttribute('content',unlocked?unlocked+', '+lockTokens:lockTokens);
+  }
+
+  function lockChromeViewportScaleTemporarily(duration){
+    if(!isChromeMobileBrowser||!viewportMeta||!baseViewportMetaContent) return;
+    clearTimeout(chromeViewportUnlockTimer);
+    setChromeViewportScaleLock(true);
+    chromeViewportUnlockTimer=setTimeout(function(){
+      setChromeViewportScaleLock(false);
+    },duration||700);
+  }
+
+  function normalizeChromeViewportScaleIfNeeded(){
+    if(!isChromeMobileBrowser||!window.visualViewport) return;
+    if(!(window.visualViewport.scale>1.01)) return;
+    lockChromeViewportScaleTemporarily(280);
+  }
+
+  function scheduleChromeOrientationZoomGuard(){
+    if(!isChromeMobileBrowser) return;
+    clearTimeout(chromeViewportCheckTimerA);
+    clearTimeout(chromeViewportCheckTimerB);
+    clearTimeout(chromeViewportCheckTimerC);
+    // Chrome Mobile can occasionally retain a stale post-rotation scale.
+    lockChromeViewportScaleTemporarily(760);
+    chromeViewportCheckTimerA=setTimeout(normalizeChromeViewportScaleIfNeeded,110);
+    chromeViewportCheckTimerB=setTimeout(normalizeChromeViewportScaleIfNeeded,340);
+    chromeViewportCheckTimerC=setTimeout(normalizeChromeViewportScaleIfNeeded,680);
   }
 
   function updatePreferredRotationAnchor(){
@@ -2069,6 +2123,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     if(inOrientationSettle) scheduleOrientationFinalize();
   });
   window.addEventListener('orientationchange',function(){
+    scheduleChromeOrientationZoomGuard();
     orientationSettleUntil=Date.now()+420;
     lastRelayoutViewportWidth=getLayoutViewportWidth();
     startOrientationUiSettle();
