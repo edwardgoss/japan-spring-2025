@@ -1823,8 +1823,14 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   let orientationFinalizeTimer=null;
   let rotationPaintHoldTimer=null;
   let preferredRotationAnchorIndex=-1;
+  let lastRelayoutViewportWidth=0;
   let rotationAnchorLocked=false;
   let suppressAnchorTrackingScroll=false;
+
+  function getLayoutViewportWidth(){
+    var w=window.visualViewport&&window.visualViewport.width?window.visualViewport.width:document.documentElement.clientWidth;
+    return Math.round(w);
+  }
 
   function updatePreferredRotationAnchor(){
     var anchor=captureGalleryScrollAnchor(true);
@@ -1887,12 +1893,23 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       gallery.classList.remove('rotation-hold');
     },240);
   }
+
+  lastRelayoutViewportWidth=getLayoutViewportWidth();
+
+  function shouldRunResizeRelayout(inOrientationSettle){
+    var viewportW=getLayoutViewportWidth();
+    var widthChanged=Math.abs(viewportW-lastRelayoutViewportWidth)>1;
+    if(widthChanged) lastRelayoutViewportWidth=viewportW;
+    return inOrientationSettle||widthChanged;
+  }
+
   window.addEventListener('resize',function(){
     if(lightbox.classList.contains('active')){
       pendingLayoutAfterLightbox=true;
       return;
     }
     var inOrientationSettle=Date.now()<orientationSettleUntil;
+    if(!shouldRunResizeRelayout(inOrientationSettle)) return;
     var delay=inOrientationSettle?0:100;
     var forced=Date.now()<orientationSettleUntil?preferredRotationAnchorIndex:null;
     scheduleAnchoredRelayout(delay,forced);
@@ -1905,6 +1922,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
         return;
       }
       var inOrientationSettle=Date.now()<orientationSettleUntil;
+      if(!shouldRunResizeRelayout(inOrientationSettle)) return;
       var delay=inOrientationSettle?0:100;
       var forced=Date.now()<orientationSettleUntil?preferredRotationAnchorIndex:null;
       scheduleAnchoredRelayout(delay,forced);
@@ -1913,6 +1931,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   }
   window.addEventListener('orientationchange',function(){
     orientationSettleUntil=Date.now()+420;
+    lastRelayoutViewportWidth=getLayoutViewportWidth();
     if(lightbox.classList.contains('active')){
       pendingLayoutAfterLightbox=true;
       return;
@@ -1950,7 +1969,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
         var now=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
         if(!suppressAnchorTrackingScroll&&!lightbox.classList.contains('active')){
           rotationAnchorLocked=false;
-          updatePreferredRotationAnchor();
         }
         if(!isFirefoxBrowser&&now-lastNowShowingScrollUpdate>=NOW_SHOWING_SCROLL_INTERVAL){
           updateNowShowing();
