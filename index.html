@@ -434,9 +434,9 @@
     z-index:110;
     padding:
       28px
-      calc(20px + env(safe-area-inset-right))
-      calc(18px + env(safe-area-inset-bottom))
-      calc(20px + env(safe-area-inset-left));
+      calc(20px + min(env(safe-area-inset-right), 6px))
+      calc(18px + min(env(safe-area-inset-bottom), 8px))
+      calc(20px + min(env(safe-area-inset-left), 6px));
     background:rgba(0,0,0,.55);
     backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
     color:rgba(255,255,255,.96);
@@ -560,9 +560,9 @@
   html.compact-caption .lightbox-caption{
     padding:
       4px
-      calc(14px + env(safe-area-inset-right))
-      calc(3px + env(safe-area-inset-bottom))
-      calc(14px + env(safe-area-inset-left));
+      calc(14px + min(env(safe-area-inset-right), 4px))
+      calc(3px + min(env(safe-area-inset-bottom), 6px))
+      calc(14px + min(env(safe-area-inset-left), 4px));
     background:rgba(0,0,0,.45);
   }
   html.compact-caption .lightbox-location{
@@ -583,9 +583,9 @@
     html.compact-caption .lightbox-caption{
       padding:
         6px
-        calc(14px + env(safe-area-inset-right))
-        calc(5px + env(safe-area-inset-bottom))
-        calc(14px + env(safe-area-inset-left));
+        calc(14px + min(env(safe-area-inset-right), 4px))
+        calc(5px + min(env(safe-area-inset-bottom), 6px))
+        calc(14px + min(env(safe-area-inset-left), 4px));
     }
     html.compact-caption .lightbox-location{
       font-size:.62rem;
