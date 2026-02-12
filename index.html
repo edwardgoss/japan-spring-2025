@@ -339,7 +339,11 @@
   }
   .gallery.settling{opacity:.98}
   .gallery.settling-deep{opacity:.95;transition:opacity .18s ease}
-  .gallery.rotation-hold{opacity:0;transition:none !important}
+  .gallery.rotation-hold{
+    opacity:.985;
+    transition:opacity .06s linear !important;
+    pointer-events:none;
+  }
 
   .gallery-item{
     position:absolute;
