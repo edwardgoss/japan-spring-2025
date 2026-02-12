@@ -746,13 +746,13 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const isSafariBrowser=/Safari/i.test(ua)&&!/Chrome|CriOS|FxiOS|EdgiOS|OPiOS|OPR|Android/i.test(ua);
   const isFirefoxBrowser=/Firefox/i.test(ua)&&!/FxiOS/i.test(ua);
   const INITIAL_EAGER = isIOSLike
-    ? (isIPadLike?12:10)
+    ? (isIPadLike?8:9)
     : (window.innerWidth <= 800 ? (isSafariBrowser ? 14 : 10) : (isSafariBrowser ? 18 : 14));
   const HIGH_PRIORITY_EAGER = isIOSLike ? 4 : (isSafariBrowser ? 8 : 6);
-  const PRELOAD_AHEAD_TOP = isIOSLike ? 120 : (isSafariBrowser ? 200 : 1200);
-  const PRELOAD_AHEAD_BOTTOM = isIOSLike ? (isIPadLike?900:700) : (isSafariBrowser ? 2200 : 1200);
+  const PRELOAD_AHEAD_TOP = isIOSLike ? 80 : (isSafariBrowser ? 200 : 1200);
+  const PRELOAD_AHEAD_BOTTOM = isIOSLike ? (isIPadLike?420:360) : (isSafariBrowser ? 2200 : 1200);
   const PROMO_CAP_SAFARI = isSafariBrowser
-    ? (isIOSLike ? (isIPadLike?8:6) : (window.innerWidth <= 800 ? 10 : 14))
+    ? (isIOSLike ? (isIPadLike?4:3) : (window.innerWidth <= 800 ? 10 : 14))
     : 0;
   const RATIO_CODES='LPLPLPTPPLLPLLLPPPPPLPLLPPPLLLLWPTPPLPPLLLPTLPLPPWTLPLWPLLLPPPPTTWTPPTLPLPPLLLPLLLLWLPLPPLLTPPPLPLLLLPPLLLPPLPPLPTWPLPPLLPLLPPLLLPLPLLWLLLLPLWWPPLPLPPPLLTTWPLPLLLPLPWPLLLLLLLLPLLLLPLLLLLLLLWPLLLTPLPPPLLPLPPLLPLLLLLLLLLWLWTWTWTL';
   const RATIO_PRESETS={
@@ -1996,7 +1996,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     }
     var inOrientationSettle=Date.now()<orientationSettleUntil;
     if(!shouldRunResizeRelayout(inOrientationSettle)) return;
-    var delay=inOrientationSettle?0:100;
+    // During orientation settle, coalesce resize bursts into one anchored relayout.
+    var delay=inOrientationSettle?80:100;
     var forced=Date.now()<orientationSettleUntil?preferredRotationAnchorIndex:null;
     scheduleAnchoredRelayout(delay,forced);
     if(inOrientationSettle) scheduleOrientationFinalize();
