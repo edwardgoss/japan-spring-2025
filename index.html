@@ -1419,7 +1419,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     updateClearAllBtn();
     closeMenu();
     // return to top for a predictable reset
-    window.scrollTo({top:0,behavior:'smooth'});
+    window.scrollTo({left:0,top:0,behavior:'smooth'});
   });
   menuDropdown.appendChild(clearAllBtn);
 
@@ -1460,7 +1460,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     updateFiltered();
     layout();
     // Scroll to top when search changes
-    if(activeSearch) window.scrollTo({top:0,behavior:'instant'});
+    if(activeSearch) window.scrollTo({left:0,top:0,behavior:'instant'});
     updateNoResults();
     lastShownKey='';
     updateNowShowing();
@@ -1558,7 +1558,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   if(titleTap){
     titleTap.addEventListener('click',function(e){
       e.stopPropagation();
-      window.scrollTo({top:0,behavior:'smooth'});
+      window.scrollTo({left:0,top:0,behavior:'smooth'});
     });
   }
 
@@ -1596,7 +1596,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     if(!Number.isFinite(itemTop)) return;
     var photoTop=itemTop+galleryTop;
     var target=photoTop+anchor.offset-scanY;
-    window.scrollTo({top:Math.max(0,target),behavior:'instant'});
+    window.scrollTo({left:0,top:Math.max(0,target),behavior:'instant'});
   }
 
   function getTopVisibleIndex(){
@@ -1620,7 +1620,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     // Reset "All" to the top for a cleaner, predictable experience.
     if(city==='All'){
       gallery.classList.add('settling-deep');
-      window.scrollTo({top:0,behavior:'instant'});
+      window.scrollTo({left:0,top:0,behavior:'instant'});
       requestAnimationFrame(function(){
         gallery.classList.remove('settling-deep');
       });
@@ -1644,14 +1644,14 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       var el=items[scrollTarget].el;
       var galleryTop=gallery.getBoundingClientRect().top+window.scrollY;
       var photoTop=parseFloat(el.style.top)+galleryTop;
-      window.scrollTo({top:photoTop-headerH-10,behavior:'instant'});
+      window.scrollTo({left:0,top:photoTop-headerH-10,behavior:'instant'});
       requestAnimationFrame(function(){
         gallery.classList.remove('settling');
       });
     }else{
       // Anchor photo not in new filter — deeper settle signals context change
       gallery.classList.add('settling-deep');
-      window.scrollTo({top:0,behavior:'instant'});
+      window.scrollTo({left:0,top:0,behavior:'instant'});
       requestAnimationFrame(function(){
         gallery.classList.remove('settling-deep');
       });
@@ -1945,7 +1945,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   let suppressAnchorTrackingScroll=false;
   const viewportMeta=document.querySelector('meta[name="viewport"]');
   let baseViewportMetaContent=viewportMeta?viewportMeta.getAttribute('content')||'':'';
-  let chromeViewportUnlockTimer=null;
   let chromeViewportCheckTimerA=null;
   let chromeViewportCheckTimerB=null;
   let chromeViewportCheckTimerC=null;
@@ -1977,11 +1976,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     }).join(', ');
   }
 
-  function normalizeChromeViewportBaseContent(){
-    if(!isChromeMobileBrowser||!viewportMeta) return;
-    var noScaleLocks=viewportContentWithoutScaleLocks(baseViewportMetaContent||'');
-    var noShrink=viewportContentWithoutShrinkToFit(noScaleLocks);
-    var normalized=noShrink;
+  function normalizeViewportBaseContent(content){
+    var normalized=viewportContentWithoutShrinkToFit(viewportContentWithoutScaleLocks(content||''));
     if(!/\bwidth\s*=/i.test(normalized)){
       normalized=normalized?(normalized+', width=device-width'):'width=device-width';
     }
@@ -1991,19 +1987,30 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     if(!/\bviewport-fit\s*=/i.test(normalized)){
       normalized=normalized+', viewport-fit=cover';
     }
-    baseViewportMetaContent=normalized;
-    viewportMeta.setAttribute('content',baseViewportMetaContent);
+    return normalized;
   }
 
-  function resetChromeViewportBaseline(){
-    if(!isChromeMobileBrowser||!viewportMeta||!baseViewportMetaContent) return;
-    // Two-step reset helps Chrome iOS exit stale post-rotation viewport widths.
-    viewportMeta.setAttribute('content','width=device-width, initial-scale=1');
-    requestAnimationFrame(function(){
-      requestAnimationFrame(function(){
-        viewportMeta.setAttribute('content',baseViewportMetaContent);
-      });
-    });
+  function buildChromeNoZoomViewportContent(){
+    var normalized=normalizeViewportBaseContent(baseViewportMetaContent||'');
+    return normalized+', maximum-scale=1, minimum-scale=1, user-scalable=no';
+  }
+
+  function normalizeChromeViewportBaseContent(){
+    if(!isChromeMobileBrowser||!viewportMeta) return;
+    baseViewportMetaContent=normalizeViewportBaseContent(baseViewportMetaContent||'');
+  }
+
+  function applyChromeNoZoomViewport(){
+    if(!isChromeMobileBrowser||!viewportMeta) return;
+    viewportMeta.setAttribute('content',buildChromeNoZoomViewportContent());
+  }
+
+  function resetHorizontalViewportOffset(){
+    if(!isChromeMobileBrowser) return;
+    var y=window.scrollY||window.pageYOffset||0;
+    window.scrollTo(0,y);
+    if(document.documentElement) document.documentElement.scrollLeft=0;
+    if(document.body) document.body.scrollLeft=0;
   }
 
   function hasChromeViewportOrientationMismatch(){
@@ -2016,39 +2023,28 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     return mediaLandscape!==layoutLandscape;
   }
 
-  function setChromeViewportScaleLock(lockScale){
-    if(!isChromeMobileBrowser||!viewportMeta||!baseViewportMetaContent) return;
-    if(!lockScale){
-      viewportMeta.setAttribute('content',baseViewportMetaContent);
-      return;
-    }
-    var unlocked=viewportContentWithoutScaleLocks(baseViewportMetaContent);
-    var lockTokens='maximum-scale=1, minimum-scale=1, user-scalable=no';
-    viewportMeta.setAttribute('content',unlocked?unlocked+', '+lockTokens:lockTokens);
-  }
-
-  function lockChromeViewportScaleTemporarily(duration){
-    if(!isChromeMobileBrowser||!viewportMeta||!baseViewportMetaContent) return;
-    clearTimeout(chromeViewportUnlockTimer);
-    setChromeViewportScaleLock(true);
-    chromeViewportUnlockTimer=setTimeout(function(){
-      setChromeViewportScaleLock(false);
-    },duration||700);
-  }
-
-  function normalizeChromeViewportScaleIfNeeded(){
-    if(!isChromeMobileBrowser) return;
+  function isChromeViewportUnhealthy(){
+    if(!isChromeMobileBrowser) return false;
     var zoomed=!!(window.visualViewport&&window.visualViewport.scale>1.01);
     var mismatch=hasChromeViewportOrientationMismatch();
-    if(!zoomed&&!mismatch) return;
-    resetChromeViewportBaseline();
-    lockChromeViewportScaleTemporarily(280);
+    var xOffset=Math.abs(window.scrollX||window.pageXOffset||0)>1;
+    return zoomed||mismatch||xOffset;
   }
 
-  function scheduleChromeViewportHealthCheck(delay){
+  function healChromeViewportIfNeeded(force){
+    if(!isChromeMobileBrowser) return;
+    if(!force&&!isChromeViewportUnhealthy()) return;
+    applyChromeNoZoomViewport();
+    resetHorizontalViewportOffset();
+    requestAnimationFrame(resetHorizontalViewportOffset);
+  }
+
+  function scheduleChromeViewportHealthCheck(delay,force){
     if(!isChromeMobileBrowser) return;
     clearTimeout(chromeViewportHealthTimer);
-    chromeViewportHealthTimer=setTimeout(normalizeChromeViewportScaleIfNeeded,delay||110);
+    chromeViewportHealthTimer=setTimeout(function(){
+      healChromeViewportIfNeeded(!!force);
+    },delay||110);
   }
 
   function scheduleChromeOrientationZoomGuard(){
@@ -2056,35 +2052,31 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     clearTimeout(chromeViewportCheckTimerA);
     clearTimeout(chromeViewportCheckTimerB);
     clearTimeout(chromeViewportCheckTimerC);
-    // Chrome Mobile can occasionally retain a stale post-rotation scale.
-    resetChromeViewportBaseline();
-    lockChromeViewportScaleTemporarily(820);
+    healChromeViewportIfNeeded(true);
     chromeViewportCheckTimerA=setTimeout(function(){
-      resetChromeViewportBaseline();
-      normalizeChromeViewportScaleIfNeeded();
+      healChromeViewportIfNeeded(true);
     },120);
     chromeViewportCheckTimerB=setTimeout(function(){
-      resetChromeViewportBaseline();
-      normalizeChromeViewportScaleIfNeeded();
+      healChromeViewportIfNeeded(true);
     },360);
     chromeViewportCheckTimerC=setTimeout(function(){
-      resetChromeViewportBaseline();
-      normalizeChromeViewportScaleIfNeeded();
-    },720);
+      healChromeViewportIfNeeded(true);
+    },760);
   }
 
   normalizeChromeViewportBaseContent();
-  scheduleChromeViewportHealthCheck(40);
+  applyChromeNoZoomViewport();
+  scheduleChromeViewportHealthCheck(40,true);
   window.addEventListener('resize',function(){
-    scheduleChromeViewportHealthCheck(130);
+    scheduleChromeViewportHealthCheck(130,false);
   });
   if(window.visualViewport){
     window.visualViewport.addEventListener('resize',function(){
-      scheduleChromeViewportHealthCheck(90);
+      scheduleChromeViewportHealthCheck(90,false);
     });
   }
   window.addEventListener('pageshow',function(){
-    scheduleChromeViewportHealthCheck(80);
+    scheduleChromeViewportHealthCheck(80,true);
   });
 
   function updatePreferredRotationAnchor(){
@@ -2117,7 +2109,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       layout();
       if(Math.abs((window.scrollY||0)-scrollBeforeLayout)>1){
         withSuppressedAnchorTracking(function(){
-          window.scrollTo({top:scrollBeforeLayout,behavior:'instant'});
+          window.scrollTo({left:0,top:scrollBeforeLayout,behavior:'instant'});
         });
       }
       // Post-close settle passes should never move scroll; immediate close logic
@@ -2224,7 +2216,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   // ── Scroll to top button ──
   const scrollTopBtn=document.getElementById('scrollTop');
   scrollTopBtn.addEventListener('click',function(){
-    window.scrollTo({top:0,behavior:'smooth'});
+    window.scrollTo({left:0,top:0,behavior:'smooth'});
   });
   var scrollTopVisible=false;
 
@@ -2333,7 +2325,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     var m=getGalleryPhotoMetrics(idx);
     if(!m) return;
     var headerH=document.querySelector('header').offsetHeight;
-    window.scrollTo({top:Math.max(0,m.top-headerH-10),behavior:'instant'});
+    window.scrollTo({left:0,top:Math.max(0,m.top-headerH-10),behavior:'instant'});
   }
 
   function openLightbox(){
@@ -2409,7 +2401,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       }
     }else{
       // No navigation + no viewport change: restore exactly where user left.
-      window.scrollTo({top:lightboxOpenScrollY,behavior:'instant'});
+      window.scrollTo({left:0,top:lightboxOpenScrollY,behavior:'instant'});
     }
 
     lightboxRotatedWhileOpen=false;
