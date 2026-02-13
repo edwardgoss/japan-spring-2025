@@ -806,6 +806,9 @@
     padding-top:6px;
     opacity:.76;
   }
+  html.phone-menu-mode .menu-divider-top{
+    display:none;
+  }
   html.phone-menu-mode .menu-item{
     padding:12px 18px;
     font-size:.84rem;
@@ -1670,7 +1673,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   allCities.forEach(function(city,i){
     if(i===0){
       const div=document.createElement('div');
-      div.className='menu-divider';
+      div.className='menu-divider menu-divider-top';
       menuDropdown.appendChild(div);
     }
     if(i===1){
