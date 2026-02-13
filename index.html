@@ -561,7 +561,13 @@
     .menu-search-hint{font-size:.52rem}
     .menu-footer-credit{font-size:.7rem;opacity:.68}
     .lightbox-location{font-size:.75rem;line-height:1.45}
-    .lightbox-caption{padding:24px 16px 14px}
+    .lightbox-caption{
+      padding:
+        24px
+        calc(16px + min(env(safe-area-inset-right), 6px))
+        calc(14px + env(safe-area-inset-bottom))
+        calc(16px + min(env(safe-area-inset-left), 6px));
+    }
     .lightbox-counter{font-size:.6rem;margin-top:5px}
     .lightbox-location .jp{font-size:.8em}
   }
