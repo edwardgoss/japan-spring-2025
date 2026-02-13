@@ -401,7 +401,7 @@
     justify-items:stretch;
     opacity:0;
     transition:opacity .25s ease;
-    touch-action:pinch-zoom;
+    touch-action:pan-x pan-y pinch-zoom;
     overflow:hidden;
   }
   .lightbox.active{
@@ -429,7 +429,7 @@
     border-radius:4px;
     user-select:none;
     -webkit-user-drag:none;
-    touch-action:pinch-zoom;
+    touch-action:pan-x pan-y pinch-zoom;
   }
 
   .lightbox-close{
@@ -2700,6 +2700,11 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     return false;
   }
   lightbox.addEventListener('touchstart',function(e){
+    if(isViewportPinchScaled()){
+      // When zoomed in, keep one-finger gestures for native pan only.
+      touchIsMulti=true;
+      return;
+    }
     if(hasTouchInCaptionRegion(e)){
       touchIsMulti=true;
       e.preventDefault();
@@ -2709,6 +2714,10 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     touchStartX=e.changedTouches[0].screenX;
   },{passive:false});
   lightbox.addEventListener('touchmove',function(e){
+    if(isViewportPinchScaled()){
+      touchIsMulti=true;
+      return;
+    }
     if(hasTouchInCaptionRegion(e)){
       touchIsMulti=true;
       e.preventDefault();
