@@ -82,23 +82,6 @@
     padding-top:var(--header-offset,0px);
     touch-action:manipulation;
   }
-  body.menu-open{
-    overflow:hidden;
-    position:fixed;
-    left:0;
-    right:0;
-    width:100%;
-    top:calc(-1 * var(--menu-lock-scroll,0px));
-  }
-  html.ios-mobile-safari body.menu-open{
-    /* iOS Safari 26: fixed-body scroll lock can break toolbar translucency. */
-    position:static;
-    left:auto;
-    right:auto;
-    width:100%;
-    top:auto;
-    overflow:hidden;
-  }
 
   /* ── Header ── */
   header{
@@ -234,6 +217,9 @@
     opacity:0;
     transform:translateY(-4px);
     pointer-events:none;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
     transition:opacity .15s ease,transform .15s ease;
   }
   .menu-dropdown.open{
@@ -627,7 +613,7 @@
     .menu-btn{font-size:1.4rem;padding:6px 6px}
     .menu-dropdown{right:16px;width:240px;max-width:calc(100vw - 32px)}
     .menu-item{padding:9px 15px;font-size:.74rem}
-    .menu-search input{font-size:.6rem;padding:6px 34px 6px 9px}
+    .menu-search input{font-size:.74rem;padding:6px 34px 6px 9px}
     .menu-search-hint{font-size:.52rem}
     .menu-footer-credit{font-size:.7rem;opacity:.68}
     .lightbox-location{font-size:.75rem;line-height:1.45}
@@ -714,23 +700,23 @@
     }
   }
 
-  @media (max-width: 600px) and (hover: none) and (pointer: coarse){
-    /* Keep touch input text legible while avoiding oversized menu text */
+  @media (hover: none) and (pointer: coarse){
+    /* Keep iOS from zooming search inputs when focused. */
     .menu-search input{font-size:16px;}
   }
 
-  /* Phone landscape: keep filter menu usable without losing options off-screen.
-     Viewport-size trigger is more consistent across mobile browsers and emulators. */
-  @media (orientation: landscape) and (max-width: 950px) and (max-height: 760px){
+  /* Touch landscape: widen the filter menu and keep all controls reachable. */
+  @media (orientation: landscape) and (hover: none) and (pointer: coarse){
     .menu-btn{right:7px}
     .menu-dropdown{
-      width:min(520px,calc(100vw - 16px - env(safe-area-inset-left) - env(safe-area-inset-right)));
-      max-width:min(520px,calc(100vw - 16px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+      width:min(540px,calc(100vw - 16px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+      max-width:min(540px,calc(100vw - 16px - env(safe-area-inset-left) - env(safe-area-inset-right)));
       display:grid;
       grid-template-columns:minmax(0,1fr) minmax(0,1fr);
       max-height:calc(100vh - var(--header-offset) - 14px);
       max-height:calc(100dvh - var(--header-offset) - 14px);
       overflow-y:auto;
+      overflow-x:hidden;
       overscroll-behavior:contain;
       -webkit-overflow-scrolling:touch;
     }
@@ -752,103 +738,6 @@
       font-size:.78rem;
     }
     .menu-footer-credit{padding:8px 14px 10px;font-size:.64rem}
-  }
-
-  /* Phone-only fullscreen menu (desktop/tablet keep dropdown behavior). */
-  html.phone-menu-mode .menu-overlay{
-    background:rgba(0,0,0,.42);
-    backdrop-filter:blur(2px);
-    -webkit-backdrop-filter:blur(2px);
-  }
-  html.phone-menu-mode .menu-dropdown{
-    position:absolute;
-    top:100%;
-    left:0;
-    right:0;
-    width:auto;
-    max-width:none;
-    height:calc(100dvh - 100%);
-    max-height:calc(100dvh - 100%);
-    border-radius:0;
-    box-shadow:none;
-    padding:
-      0
-      env(safe-area-inset-right)
-      calc(16px + env(safe-area-inset-bottom))
-      env(safe-area-inset-left);
-    display:none;
-    opacity:1;
-    pointer-events:none;
-    overflow-y:auto;
-    overscroll-behavior:contain;
-    -webkit-overflow-scrolling:touch;
-    transition:none;
-    transform:none;
-  }
-  html.ios-mobile-safari.phone-menu-mode .menu-overlay{
-    /* iOS Safari 26 compositor: avoid blur path that can lock toolbar to solid fill. */
-    backdrop-filter:none;
-    -webkit-backdrop-filter:none;
-    background:rgba(0,0,0,.34);
-  }
-  html.ios-mobile-safari.phone-menu-mode .menu-dropdown{
-    -webkit-overflow-scrolling:auto;
-  }
-  html.phone-menu-mode .menu-dropdown.open{
-    display:block;
-    pointer-events:auto;
-    transform:none;
-  }
-  html.phone-menu-mode .menu-search{
-    --menu-search-top:12px;
-    position:sticky;
-    top:0;
-    z-index:2;
-    padding:var(--menu-search-top) 16px 10px;
-    background:var(--menu-bg);
-    border-bottom:1px solid var(--menu-border);
-  }
-  html.phone-menu-mode .menu-search input{
-    padding:9px 56px 9px 14px;
-    border-radius:10px;
-    font-size:16px;
-    transition:none;
-  }
-  html.phone-menu-mode .menu-search-clear{
-    right:22px;
-    top:calc(var(--menu-search-top) + 18px);
-    transform:translateY(-50%);
-    font-size:1.2rem;
-    padding:8px 10px;
-    opacity:0;
-    pointer-events:none;
-    line-height:1;
-    transition:none;
-  }
-  html.phone-menu-mode .menu-search-clear.visible{
-    opacity:.9;
-    pointer-events:auto;
-  }
-  html.phone-menu-mode .menu-search-hint{
-    font-size:.64rem;
-    padding-top:6px;
-    opacity:.76;
-  }
-  html.phone-menu-mode .menu-item{
-    padding:12px 18px;
-    font-size:.84rem;
-  }
-  html.phone-menu-mode .menu-item-count{
-    font-size:.7rem;
-  }
-  html.phone-menu-mode .menu-clear-all{
-    margin-top:8px;
-    padding:10px 18px;
-    font-size:.88rem;
-  }
-  html.phone-menu-mode .menu-footer-credit{
-    padding:10px 16px calc(12px + env(safe-area-inset-bottom));
-    font-size:.68rem;
   }
 
 </style>
@@ -1022,8 +911,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const isSafariBrowser=/Safari/i.test(ua)&&!/Chrome|CriOS|FxiOS|EdgiOS|OPiOS|OPR|Android/i.test(ua);
   const isFirefoxBrowser=/Firefox/i.test(ua)&&!/FxiOS/i.test(ua);
   const isFirefoxMobileBrowser=/Firefox|FxiOS/i.test(ua)&&(navigator.maxTouchPoints>0||isCoarsePointer);
-  const isMobileSafari=isSafariBrowser&&isIOSLike&&(navigator.maxTouchPoints>0||isCoarsePointer);
-  document.documentElement.classList.toggle('ios-mobile-safari',isMobileSafari);
   document.documentElement.classList.toggle('firefox-mobile-bottom-cover',isFirefoxMobileBrowser);
   const isChromeMobileBrowser=/Chrome|CriOS/i.test(ua)&&!/EdgA|EdgiOS|OPR|OPiOS|SamsungBrowser|YaBrowser|UCBrowser/i.test(ua)&&(/Android/i.test(ua)||/CriOS/i.test(ua));
   const INITIAL_EAGER = isIOSLike
@@ -1607,13 +1494,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const items=[];
   let filtered=[];
   let menuOpen=false;
-  let phoneMenuMode=false;
-  let menuOpenedAt=0;
   let menuOpenTimer=null;
-  let iosPhoneMenuScrollGuardEnabled=false;
-  let iosPhoneMenuTouchY=0;
-  let menuLockedScrollY=0;
-  let menuUnlockScrollYOverride=null;
   let deferClearAllRevealUntilMenuClose=false;
 
   // ── Build hamburger menu ──
@@ -1648,7 +1529,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   clearAllBtn.className='menu-item menu-clear-all';
   clearAllBtn.textContent='Clear Filter & Search';
   clearAllBtn.addEventListener('click',function(e){
-    if(isMenuGhostTap()) return;
     e.stopPropagation();
     activeFilter='All';
     activeSearch='';
@@ -1722,11 +1602,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
   // Search handler
   searchInput.addEventListener('input',function(){
-    if(phoneMenuMode){
-      updateSearchClear();
-      updateClearAllBtn();
-      return;
-    }
     applySearchFromInput();
   });
   // Filter items
@@ -1748,9 +1623,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     btn.dataset.city=city;
     btn.innerHTML=city+'<span class="menu-item-count">'+(cityCounts[city]||0)+'</span>';
     btn.addEventListener('click',function(){
-      if(isMenuGhostTap()) return;
       deferClearAllRevealUntilMenuClose=(
-        !phoneMenuMode&&
         activeFilter==='All'&&
         city!=='All'&&
         normalize(searchInput.value.trim()).length>0
@@ -1785,114 +1658,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       menuOpenTimer=null;
     }
   }
-  function isIosPhoneMenuScrollGuardActive(){
-    return !!(isMobileSafari&&menuOpen&&phoneMenuMode);
-  }
-  function iosPhoneMenuTouchStart(e){
-    if(!isIosPhoneMenuScrollGuardActive()) return;
-    if(!e.touches||!e.touches.length) return;
-    iosPhoneMenuTouchY=e.touches[0].clientY;
-  }
-  function iosPhoneMenuTouchMove(e){
-    if(!isIosPhoneMenuScrollGuardActive()) return;
-    if(!e.touches||!e.touches.length) return;
-    if(!menuDropdown.contains(e.target)){
-      e.preventDefault();
-      return;
-    }
-    var currentY=e.touches[0].clientY;
-    var deltaY=currentY-iosPhoneMenuTouchY;
-    iosPhoneMenuTouchY=currentY;
-    var maxScroll=Math.max(0,menuDropdown.scrollHeight-menuDropdown.clientHeight);
-    if(maxScroll<=0){
-      e.preventDefault();
-      return;
-    }
-    var atTop=menuDropdown.scrollTop<=0;
-    var atBottom=menuDropdown.scrollTop>=maxScroll-1;
-    if((atTop&&deltaY>0)||(atBottom&&deltaY<0)){
-      e.preventDefault();
-    }
-  }
-  function iosPhoneMenuWheel(e){
-    if(!isIosPhoneMenuScrollGuardActive()) return;
-    if(!menuDropdown.contains(e.target)){
-      e.preventDefault();
-      return;
-    }
-    var maxScroll=Math.max(0,menuDropdown.scrollHeight-menuDropdown.clientHeight);
-    if(maxScroll<=0){
-      e.preventDefault();
-      return;
-    }
-    var deltaY=e.deltaY||0;
-    var atTop=menuDropdown.scrollTop<=0;
-    var atBottom=menuDropdown.scrollTop>=maxScroll-1;
-    if((atTop&&deltaY<0)||(atBottom&&deltaY>0)){
-      e.preventDefault();
-    }
-  }
-  function enableIosPhoneMenuScrollGuard(){
-    if(iosPhoneMenuScrollGuardEnabled) return;
-    iosPhoneMenuScrollGuardEnabled=true;
-    document.addEventListener('touchstart',iosPhoneMenuTouchStart,{passive:true,capture:true});
-    document.addEventListener('touchmove',iosPhoneMenuTouchMove,{passive:false,capture:true});
-    document.addEventListener('wheel',iosPhoneMenuWheel,{passive:false,capture:true});
-  }
-  function disableIosPhoneMenuScrollGuard(){
-    if(!iosPhoneMenuScrollGuardEnabled) return;
-    iosPhoneMenuScrollGuardEnabled=false;
-    document.removeEventListener('touchstart',iosPhoneMenuTouchStart,true);
-    document.removeEventListener('touchmove',iosPhoneMenuTouchMove,true);
-    document.removeEventListener('wheel',iosPhoneMenuWheel,true);
-  }
-  function lockPageScrollForPhoneMenu(){
-    if(isMobileSafari){
-      menuLockedScrollY=window.scrollY||window.pageYOffset||0;
-      menuUnlockScrollYOverride=null;
-      disableIosPhoneMenuScrollGuard();
-      enableIosPhoneMenuScrollGuard();
-      return;
-    }
-    if(document.body.classList.contains('menu-open')) return;
-    menuLockedScrollY=window.scrollY||window.pageYOffset||0;
-    menuUnlockScrollYOverride=null;
-    document.documentElement.style.setProperty('--menu-lock-scroll',menuLockedScrollY+'px');
-    document.body.classList.add('menu-open');
-  }
-  function unlockPageScrollForPhoneMenu(){
-    if(isMobileSafari){
-      disableIosPhoneMenuScrollGuard();
-      document.body.classList.remove('menu-open');
-      document.documentElement.style.removeProperty('--menu-lock-scroll');
-      menuUnlockScrollYOverride=null;
-      return;
-    }
-    if(!document.body.classList.contains('menu-open')) return;
-    document.body.classList.remove('menu-open');
-    document.documentElement.style.removeProperty('--menu-lock-scroll');
-    var restoreY=Number.isFinite(menuUnlockScrollYOverride)?menuUnlockScrollYOverride:menuLockedScrollY;
-    menuUnlockScrollYOverride=null;
-    window.scrollTo({left:0,top:restoreY,behavior:'instant'});
-  }
-  function scheduleSafariToolbarNudge(){
-    if(!isMobileSafari) return;
-    if(lightbox.classList.contains('active')) return;
-    var y=window.scrollY||window.pageYOffset||0;
-    var maxScroll=Math.max(0,(document.documentElement.scrollHeight||0)-(window.innerHeight||0));
-    if(maxScroll<=0){
-      window.scrollTo({left:0,top:0,behavior:'instant'});
-      return;
-    }
-    var bump=(y<maxScroll)?(y+1):Math.max(0,y-1);
-    window.scrollTo({left:0,top:bump,behavior:'instant'});
-    requestAnimationFrame(function(){
-      window.scrollTo({left:0,top:y,behavior:'instant'});
-    });
-    setTimeout(function(){
-      window.scrollTo({left:0,top:y,behavior:'instant'});
-    },120);
-  }
   function getMenuViewportMetrics(){
     if(window.visualViewport){
       return{
@@ -1905,48 +1670,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       height:window.innerHeight||0
     };
   }
-  function computePhoneMenuMode(){
-    var coarseTouch=window.matchMedia('(hover: none) and (pointer: coarse)').matches;
-    var hasTouch=(navigator.maxTouchPoints||0)>0||('ontouchstart' in window);
-    if(!coarseTouch&&!hasTouch) return false;
-    var vm=getMenuViewportMetrics();
-    var vw=vm.width||window.innerWidth||document.documentElement.clientWidth||0;
-    var vh=vm.height||window.innerHeight||0;
-    var shortSide=Math.min(vw,vh);
-    var longSide=Math.max(vw,vh);
-    return shortSide>0&&shortSide<=600&&longSide<=1200;
-  }
-  function syncPhoneMenuMode(){
-    var next=computePhoneMenuMode();
-    if(next===phoneMenuMode&&document.documentElement.classList.contains('phone-menu-mode')===next){
-      if(menuOpen){
-        if(phoneMenuMode) lockPageScrollForPhoneMenu();
-        else unlockPageScrollForPhoneMenu();
-      }
-      return;
-    }
-    phoneMenuMode=next;
-    document.documentElement.classList.toggle('phone-menu-mode',phoneMenuMode);
-    updateClearAllBtn();
-    if(menuOpen){
-      if(phoneMenuMode) lockPageScrollForPhoneMenu();
-      else unlockPageScrollForPhoneMenu();
-    }
-    if(menuOpen){
-      if(phoneMenuMode){
-        resetMenuDropdownPositionStyles();
-      }else{
-        scheduleMenuDropdownPosition();
-      }
-    }
-  }
 
   function positionMenuDropdown(){
     if(!menuOpen||!menuBtn) return;
-    if(phoneMenuMode){
-      resetMenuDropdownPositionStyles();
-      return;
-    }
     var vm=getMenuViewportMetrics();
     var viewportH=Math.round(vm.height||0);
     if(viewportH<=0) return;
@@ -1976,24 +1702,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   function isMenuSearchEditing(){
     return !!(menuOpen&&document.activeElement===searchInput);
   }
-  function isMenuGhostTap(){
-    return phoneMenuMode&&menuOpen&&(Date.now()-menuOpenedAt)<220;
-  }
-  function normalizePhoneMenuScroll(forceTop){
-    if(!menuOpen||!phoneMenuMode) return;
-    var maxScroll=Math.max(0,menuDropdown.scrollHeight-menuDropdown.clientHeight);
-    var targetTop=forceTop?0:Math.max(0,Math.min(menuDropdown.scrollTop,maxScroll));
-    if(Math.abs((menuDropdown.scrollTop||0)-targetTop)>1){
-      menuDropdown.scrollTop=targetTop;
-    }
-  }
   function handleMenuViewportUpdate(){
-    syncPhoneMenuMode();
     if(!menuOpen) return;
-    if(phoneMenuMode){
-      normalizePhoneMenuScroll(false);
-      return;
-    }
     scheduleMenuDropdownPosition();
   }
 
@@ -2001,38 +1711,24 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     cancelPendingMenuOpen();
     deferClearAllRevealUntilMenuClose=false;
     menuOpen=true;
-    menuOpenedAt=Date.now();
-    syncPhoneMenuMode();
     updateClearAllBtn();
     menuDropdown.hidden=false;
     menuOverlay.hidden=false;
     menuDropdown.classList.add('open');
     menuOverlay.classList.add('open');
-    if(!phoneMenuMode){
-      scheduleMenuDropdownPosition();
-      setTimeout(scheduleMenuDropdownPosition,40);
-    }
+    scheduleMenuDropdownPosition();
+    setTimeout(scheduleMenuDropdownPosition,40);
   }
   function closeMenu(){
     cancelPendingMenuOpen();
-    if(phoneMenuMode){
-      var draftNormalized=normalize(searchInput.value.trim());
-      if(draftNormalized!==activeSearch){
-        searchInput.value=activeSearchDisplay;
-        updateSearchClear();
-        updateClearAllBtn();
-      }
-    }
     deferClearAllRevealUntilMenuClose=false;
     menuOpen=false;
     menuPositionRafPending=false;
-    unlockPageScrollForPhoneMenu();
     resetMenuDropdownPositionStyles();
     menuDropdown.classList.remove('open');
     menuOverlay.classList.remove('open');
     menuDropdown.hidden=true;
     menuOverlay.hidden=true;
-    scheduleSafariToolbarNudge();
     // Dismiss iOS keyboard / zoom if search is focused
     if(document.activeElement===searchInput) searchInput.blur();
   }
@@ -2069,24 +1765,17 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     window.visualViewport.addEventListener('scroll',handleMenuViewportUpdate);
   }
   window.addEventListener('scroll',function(){
-    if(!menuOpen||phoneMenuMode) return;
+    if(!menuOpen) return;
     scheduleMenuDropdownPosition();
   },{passive:true});
   window.addEventListener('orientationchange',function(){
     handleMenuViewportUpdate();
     if(!menuOpen) return;
-    if(phoneMenuMode){
-      setTimeout(function(){normalizePhoneMenuScroll(true)},40);
-      setTimeout(function(){normalizePhoneMenuScroll(true)},180);
-      setTimeout(function(){normalizePhoneMenuScroll(true)},360);
-      return;
-    }
     setTimeout(scheduleMenuDropdownPosition,80);
     setTimeout(scheduleMenuDropdownPosition,320);
   });
   searchInput.addEventListener('focus',function(){
     if(!menuOpen) return;
-    if(phoneMenuMode) return;
     handleMenuViewportUpdate();
     setTimeout(handleMenuViewportUpdate,60);
     setTimeout(handleMenuViewportUpdate,180);
@@ -2095,11 +1784,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   });
   searchInput.addEventListener('blur',function(){
     if(!menuOpen) return;
-    if(phoneMenuMode) return;
     handleMenuViewportUpdate();
     setTimeout(scheduleMenuDropdownPosition,80);
   });
-  syncPhoneMenuMode();
 
   // Header title: scroll to top (does not interfere with hamburger button)
   var titleTap=document.getElementById('titleTap');
@@ -2152,7 +1839,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     return anchor?anchor.index:-1;
   }
   function shouldResetFilterScrollForCurrentContext(){
-    if(phoneMenuMode) return true;
     if(!menuOpen) return false;
     var vm=getMenuViewportMetrics();
     var shortSide=Math.min(vm.width||window.innerWidth||0,vm.height||window.innerHeight||0);
@@ -2161,9 +1847,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
   function setFilter(city){
     var resetToTopOnFilterChange=shouldResetFilterScrollForCurrentContext();
-    menuUnlockScrollYOverride=(phoneMenuMode&&menuOpen&&resetToTopOnFilterChange)?0:null;
     // For non-"All" filters, preserve context by anchoring to top visible photo.
-    // Phone/mobile menu mode intentionally resets to top for clearer filter transitions.
+    // Narrow touch viewports intentionally reset to top for clearer filter transitions.
     var anchorIdx=(city==='All'||resetToTopOnFilterChange) ? -1 : getTopVisibleIndex();
 
     activeFilter=city;
