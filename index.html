@@ -767,7 +767,9 @@
       env(safe-area-inset-right)
       calc(16px + env(safe-area-inset-bottom))
       env(safe-area-inset-left);
-    display:block;
+    display:none;
+    opacity:1;
+    pointer-events:none;
     overflow-y:auto;
     overscroll-behavior:contain;
     -webkit-overflow-scrolling:touch;
@@ -775,6 +777,8 @@
     transform:none;
   }
   html.phone-menu-mode .menu-dropdown.open{
+    display:block;
+    pointer-events:auto;
     transform:none;
   }
   html.phone-menu-mode .menu-search{
