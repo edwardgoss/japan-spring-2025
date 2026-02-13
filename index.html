@@ -843,9 +843,9 @@
     <button class="menu-btn" id="menuBtn" aria-label="Filter menu">&#9776;</button>
   </div>
   <div class="now-showing" id="nowShowing"></div>
-  <div class="menu-dropdown" id="menuDropdown"></div>
+  <div class="menu-dropdown" id="menuDropdown" hidden></div>
 </header>
-<div class="menu-overlay" id="menuOverlay"></div>
+<div class="menu-overlay" id="menuOverlay" hidden></div>
 
 <div class="gallery" id="gallery"></div>
 <div class="no-results" id="noResults">No matches</div>
@@ -1589,6 +1589,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   let menuOpen=false;
   let phoneMenuMode=false;
   let menuOpenedAt=0;
+  let menuOpenTimer=null;
   let menuLockedScrollY=0;
   let menuUnlockScrollYOverride=null;
   let deferClearAllRevealUntilMenuClose=false;
@@ -1756,6 +1757,12 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     menuDropdown.style.removeProperty('bottom');
     menuDropdown.style.removeProperty('max-height');
   }
+  function cancelPendingMenuOpen(){
+    if(menuOpenTimer){
+      clearTimeout(menuOpenTimer);
+      menuOpenTimer=null;
+    }
+  }
   function lockPageScrollForPhoneMenu(){
     if(document.body.classList.contains('menu-open')) return;
     menuLockedScrollY=window.scrollY||window.pageYOffset||0;
@@ -1876,19 +1883,24 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   }
 
   function openMenu(){
+    cancelPendingMenuOpen();
     deferClearAllRevealUntilMenuClose=false;
     menuOpen=true;
     menuOpenedAt=Date.now();
     syncPhoneMenuMode();
     updateClearAllBtn();
+    menuDropdown.hidden=false;
+    menuOverlay.hidden=false;
     menuDropdown.classList.add('open');
     menuOverlay.classList.add('open');
+    if(window._syncBrowserThemeColor) window._syncBrowserThemeColor();
     if(!phoneMenuMode){
       scheduleMenuDropdownPosition();
       setTimeout(scheduleMenuDropdownPosition,40);
     }
   }
   function closeMenu(){
+    cancelPendingMenuOpen();
     if(phoneMenuMode){
       var draftNormalized=normalize(searchInput.value.trim());
       if(draftNormalized!==activeSearch){
@@ -1904,6 +1916,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     resetMenuDropdownPositionStyles();
     menuDropdown.classList.remove('open');
     menuOverlay.classList.remove('open');
+    menuDropdown.hidden=true;
+    menuOverlay.hidden=true;
+    if(window._syncBrowserThemeColor) window._syncBrowserThemeColor();
     // Dismiss iOS keyboard / zoom if search is focused
     if(document.activeElement===searchInput) searchInput.blur();
   }
@@ -1927,7 +1942,11 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       closeMenu();
       return;
     }
-    setTimeout(openMenu,0);
+    cancelPendingMenuOpen();
+    menuOpenTimer=setTimeout(function(){
+      menuOpenTimer=null;
+      openMenu();
+    },0);
   });
   menuOverlay.addEventListener('click',closeMenu);
   window.addEventListener('resize',handleMenuViewportUpdate);
