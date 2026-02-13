@@ -1944,11 +1944,12 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   let rotationAnchorLocked=false;
   let suppressAnchorTrackingScroll=false;
   const viewportMeta=document.querySelector('meta[name="viewport"]');
-  const baseViewportMetaContent=viewportMeta?viewportMeta.getAttribute('content')||'':'';
+  let baseViewportMetaContent=viewportMeta?viewportMeta.getAttribute('content')||'':'';
   let chromeViewportUnlockTimer=null;
   let chromeViewportCheckTimerA=null;
   let chromeViewportCheckTimerB=null;
   let chromeViewportCheckTimerC=null;
+  let chromeViewportHealthTimer=null;
   function isViewportPinchScaled(){
     return !!(window.visualViewport&&typeof window.visualViewport.scale==='number'&&window.visualViewport.scale>1.01);
   }
@@ -1965,6 +1966,54 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       if(!part) return false;
       return !/^maximum-scale\s*=|^minimum-scale\s*=|^user-scalable\s*=/i.test(part);
     }).join(', ');
+  }
+
+  function viewportContentWithoutShrinkToFit(content){
+    return content.split(',').map(function(part){
+      return part.trim();
+    }).filter(function(part){
+      if(!part) return false;
+      return !/^shrink-to-fit\s*=/i.test(part);
+    }).join(', ');
+  }
+
+  function normalizeChromeViewportBaseContent(){
+    if(!isChromeMobileBrowser||!viewportMeta) return;
+    var noScaleLocks=viewportContentWithoutScaleLocks(baseViewportMetaContent||'');
+    var noShrink=viewportContentWithoutShrinkToFit(noScaleLocks);
+    var normalized=noShrink;
+    if(!/\bwidth\s*=/i.test(normalized)){
+      normalized=normalized?(normalized+', width=device-width'):'width=device-width';
+    }
+    if(!/\binitial-scale\s*=/i.test(normalized)){
+      normalized=normalized+', initial-scale=1';
+    }
+    if(!/\bviewport-fit\s*=/i.test(normalized)){
+      normalized=normalized+', viewport-fit=cover';
+    }
+    baseViewportMetaContent=normalized;
+    viewportMeta.setAttribute('content',baseViewportMetaContent);
+  }
+
+  function resetChromeViewportBaseline(){
+    if(!isChromeMobileBrowser||!viewportMeta||!baseViewportMetaContent) return;
+    // Two-step reset helps Chrome iOS exit stale post-rotation viewport widths.
+    viewportMeta.setAttribute('content','width=device-width, initial-scale=1');
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        viewportMeta.setAttribute('content',baseViewportMetaContent);
+      });
+    });
+  }
+
+  function hasChromeViewportOrientationMismatch(){
+    if(!isChromeMobileBrowser) return false;
+    var layoutW=document.documentElement.clientWidth||window.innerWidth;
+    var layoutH=document.documentElement.clientHeight||window.innerHeight;
+    if(!layoutW||!layoutH) return false;
+    var mediaLandscape=window.matchMedia('(orientation:landscape)').matches;
+    var layoutLandscape=layoutW>layoutH;
+    return mediaLandscape!==layoutLandscape;
   }
 
   function setChromeViewportScaleLock(lockScale){
@@ -1988,9 +2037,18 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   }
 
   function normalizeChromeViewportScaleIfNeeded(){
-    if(!isChromeMobileBrowser||!window.visualViewport) return;
-    if(!(window.visualViewport.scale>1.01)) return;
+    if(!isChromeMobileBrowser) return;
+    var zoomed=!!(window.visualViewport&&window.visualViewport.scale>1.01);
+    var mismatch=hasChromeViewportOrientationMismatch();
+    if(!zoomed&&!mismatch) return;
+    resetChromeViewportBaseline();
     lockChromeViewportScaleTemporarily(280);
+  }
+
+  function scheduleChromeViewportHealthCheck(delay){
+    if(!isChromeMobileBrowser) return;
+    clearTimeout(chromeViewportHealthTimer);
+    chromeViewportHealthTimer=setTimeout(normalizeChromeViewportScaleIfNeeded,delay||110);
   }
 
   function scheduleChromeOrientationZoomGuard(){
@@ -1999,11 +2057,35 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     clearTimeout(chromeViewportCheckTimerB);
     clearTimeout(chromeViewportCheckTimerC);
     // Chrome Mobile can occasionally retain a stale post-rotation scale.
-    lockChromeViewportScaleTemporarily(760);
-    chromeViewportCheckTimerA=setTimeout(normalizeChromeViewportScaleIfNeeded,110);
-    chromeViewportCheckTimerB=setTimeout(normalizeChromeViewportScaleIfNeeded,340);
-    chromeViewportCheckTimerC=setTimeout(normalizeChromeViewportScaleIfNeeded,680);
+    resetChromeViewportBaseline();
+    lockChromeViewportScaleTemporarily(820);
+    chromeViewportCheckTimerA=setTimeout(function(){
+      resetChromeViewportBaseline();
+      normalizeChromeViewportScaleIfNeeded();
+    },120);
+    chromeViewportCheckTimerB=setTimeout(function(){
+      resetChromeViewportBaseline();
+      normalizeChromeViewportScaleIfNeeded();
+    },360);
+    chromeViewportCheckTimerC=setTimeout(function(){
+      resetChromeViewportBaseline();
+      normalizeChromeViewportScaleIfNeeded();
+    },720);
   }
+
+  normalizeChromeViewportBaseContent();
+  scheduleChromeViewportHealthCheck(40);
+  window.addEventListener('resize',function(){
+    scheduleChromeViewportHealthCheck(130);
+  });
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize',function(){
+      scheduleChromeViewportHealthCheck(90);
+    });
+  }
+  window.addEventListener('pageshow',function(){
+    scheduleChromeViewportHealthCheck(80);
+  });
 
   function updatePreferredRotationAnchor(){
     var anchor=captureGalleryScrollAnchor(true);
