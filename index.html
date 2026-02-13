@@ -1875,8 +1875,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     menuUnlockScrollYOverride=null;
     window.scrollTo({left:0,top:restoreY,behavior:'instant'});
   }
-  function scheduleSafariToolbarNudge(){
-    if(!isMobileSafari) return;
+  function safariToolbarNudgeOnce(){
     if(lightbox.classList.contains('active')) return;
     var y=window.scrollY||window.pageYOffset||0;
     var maxScroll=Math.max(0,(document.documentElement.scrollHeight||0)-(window.innerHeight||0));
@@ -1884,14 +1883,31 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       window.scrollTo({left:0,top:0,behavior:'instant'});
       return;
     }
+    // Briefly toggle body overflow to force Safari to recalculate the
+    // scrollable area and the compositor layer behind the toolbar.
+    document.body.style.overflow='hidden';
+    void document.body.offsetHeight;
+    document.body.style.overflow='';
     var bump=(y<maxScroll)?(y+1):Math.max(0,y-1);
     window.scrollTo({left:0,top:bump,behavior:'instant'});
     requestAnimationFrame(function(){
       window.scrollTo({left:0,top:y,behavior:'instant'});
     });
-    setTimeout(function(){
-      window.scrollTo({left:0,top:y,behavior:'instant'});
-    },120);
+  }
+  function scheduleSafariToolbarNudge(){
+    if(!isMobileSafari) return;
+    if(lightbox.classList.contains('active')) return;
+    // iOS Safari 26: after dismissing a fixed overlay the compositor can lock
+    // the bottom toolbar to a solid fill instead of restoring translucency.
+    // Wait two frames for overlay removal to composite, then force Safari to
+    // recalculate by toggling body overflow and nudging scroll.  A second
+    // attempt at 300ms catches slow compositor settle.
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        safariToolbarNudgeOnce();
+      });
+    });
+    setTimeout(safariToolbarNudgeOnce,300);
   }
   function getMenuViewportMetrics(){
     if(window.visualViewport){
