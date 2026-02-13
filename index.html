@@ -2461,6 +2461,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   }
 
   function syncLightboxViewportHeight(){
+    if(lightbox.classList.contains('active')&&isViewportPinchScaled()) return;
     var h=getLightboxViewportHeight();
     if(h>0){
       document.documentElement.style.setProperty('--lightbox-vh',h+'px');
@@ -2494,6 +2495,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   }
 
   function syncLightboxBottomCover(){
+    if(lightbox.classList.contains('active')&&isViewportPinchScaled()) return;
     if(!isFirefoxMobileBrowser){
       setLightboxBottomCover(0);
       return;
