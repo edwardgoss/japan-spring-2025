@@ -273,6 +273,13 @@
     letter-spacing:.02em;
     transition:border-color .15s,background-color .15s;
   }
+  .menu-search input[type="search"]::-webkit-search-cancel-button,
+  .menu-search input[type="search"]::-webkit-search-decoration,
+  .menu-search input[type="search"]::-webkit-search-results-button,
+  .menu-search input[type="search"]::-webkit-search-results-decoration{
+    -webkit-appearance:none;
+    appearance:none;
+  }
   .menu-search-clear{
     position:absolute;
     right:18px;top:50%;
@@ -305,6 +312,9 @@
     opacity:.82;
     padding:3px 2px 0;
     letter-spacing:.01em;
+  }
+  .menu-search-apply{
+    display:none;
   }
 
   .no-results{
@@ -722,6 +732,92 @@
       font-size:.78rem;
     }
     .menu-footer-credit{padding:8px 14px 10px;font-size:.64rem}
+  }
+
+  /* Phone-only fullscreen menu (desktop/tablet keep dropdown behavior). */
+  html.phone-menu-mode .menu-overlay{
+    background:rgba(0,0,0,.42);
+    backdrop-filter:blur(2px);
+    -webkit-backdrop-filter:blur(2px);
+  }
+  html.phone-menu-mode .menu-dropdown{
+    position:fixed;
+    top:var(--header-offset,0px);
+    left:0;
+    right:0;
+    bottom:0;
+    width:100vw;
+    max-width:none;
+    height:calc(100dvh - var(--header-offset,0px));
+    max-height:calc(100dvh - var(--header-offset,0px));
+    border-radius:0;
+    box-shadow:none;
+    padding:0 0 calc(16px + env(safe-area-inset-bottom));
+    display:block;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+  html.phone-menu-mode .menu-search{
+    --menu-search-top:12px;
+    position:sticky;
+    top:0;
+    z-index:2;
+    padding:var(--menu-search-top) 16px 10px;
+    background:var(--menu-bg);
+    border-bottom:1px solid var(--menu-border);
+  }
+  html.phone-menu-mode .menu-search input{
+    padding:11px 56px 11px 14px;
+    border-radius:10px;
+    font-size:18px;
+  }
+  html.phone-menu-mode .menu-search-clear{
+    right:22px;
+    top:calc(var(--menu-search-top) + 24px);
+    transform:translateY(-50%);
+    font-size:1.2rem;
+    padding:8px 10px;
+    opacity:.62;
+    line-height:1;
+  }
+  html.phone-menu-mode .menu-search-clear.visible{
+    opacity:.9;
+  }
+  html.phone-menu-mode .menu-search-hint{
+    font-size:.64rem;
+    padding-top:6px;
+    opacity:.76;
+  }
+  html.phone-menu-mode .menu-search-apply{
+    display:block;
+    width:100%;
+    margin-top:8px;
+    border:1px solid var(--menu-input-border);
+    border-radius:8px;
+    background:var(--menu-input-bg);
+    color:var(--menu-input-text);
+    padding:9px 12px;
+    font-family:'Libre Baskerville',Georgia,'Times New Roman',serif;
+    font-size:.9rem;
+    letter-spacing:.02em;
+    cursor:pointer;
+  }
+  html.phone-menu-mode .menu-item{
+    padding:12px 18px;
+    font-size:.84rem;
+  }
+  html.phone-menu-mode .menu-item-count{
+    font-size:.7rem;
+  }
+  html.phone-menu-mode .menu-clear-all{
+    margin-top:8px;
+    padding:10px 18px;
+    font-size:.88rem;
+  }
+  html.phone-menu-mode .menu-footer-credit{
+    padding:10px 16px calc(12px + env(safe-area-inset-bottom));
+    font-size:.68rem;
   }
 
 </style>
@@ -1436,15 +1532,21 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const items=[];
   let filtered=[];
   let menuOpen=false;
+  let phoneMenuMode=false;
+  let menuOpenedAt=0;
 
   // ── Build hamburger menu ──
   // Search input
   const searchWrap=document.createElement('div');
   searchWrap.className='menu-search';
   const searchInput=document.createElement('input');
-  searchInput.type='text';
+  searchInput.type='search';
   searchInput.placeholder='Search locations\u2026';
   searchInput.setAttribute('aria-label','Search photos by location');
+  searchInput.setAttribute('enterkeyhint','search');
+  searchInput.setAttribute('inputmode','search');
+  searchInput.setAttribute('autocapitalize','none');
+  searchInput.spellcheck=false;
   const searchHint=document.createElement('div');
   searchHint.className='menu-search-hint';
   searchHint.textContent='Try: \u201CGion\u201D, \u201CShinjuku\u201D, \u201C\u795e\u793E\u201D';
@@ -1453,9 +1555,15 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   searchClear.type='button';
   searchClear.innerHTML='&times;';
   searchClear.setAttribute('aria-label','Clear search');
+  const searchApply=document.createElement('button');
+  searchApply.className='menu-search-apply';
+  searchApply.type='button';
+  searchApply.setAttribute('aria-label','Apply search');
+  searchApply.textContent='Search';
   searchWrap.appendChild(searchInput);
   searchWrap.appendChild(searchClear);
   searchWrap.appendChild(searchHint);
+  searchWrap.appendChild(searchApply);
   menuDropdown.appendChild(searchWrap);
 
   // Clear filter & search (shown only when something is active)
@@ -1464,6 +1572,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   clearAllBtn.className='menu-item menu-clear-all';
   clearAllBtn.textContent='Clear Filter & Search';
   clearAllBtn.addEventListener('click',function(e){
+    if(isMenuGhostTap()) return;
     e.stopPropagation();
     activeFilter='All';
     activeSearch='';
@@ -1485,8 +1594,23 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   });
   menuDropdown.appendChild(clearAllBtn);
 
+  function applySearchFromInput(options){
+    activeSearch=normalize(searchInput.value.trim());
+    updateSearchClear();
+    updateClearAllBtn();
+    updateFiltered();
+    layout();
+    if(activeSearch&&!isMenuSearchEditing()&&!(options&&options.skipScrollTop)){
+      window.scrollTo({left:0,top:0,behavior:'instant'});
+    }
+    updateNoResults();
+    lastShownKey='';
+    updateNowShowing();
+  }
+
   function updateClearAllBtn(){
-    const show = (activeFilter!=='All') || (activeSearch && activeSearch.length>0);
+    var searchValueForUi=phoneMenuMode?normalize(searchInput.value.trim()):activeSearch;
+    const show = (activeFilter!=='All') || (searchValueForUi && searchValueForUi.length>0);
     clearAllBtn.style.display = show ? '' : 'none';
   }
   updateClearAllBtn();
@@ -1503,6 +1627,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   searchInput.addEventListener('keydown',function(e){
     if(e.key==='Enter'){
       e.preventDefault();
+      applySearchFromInput();
       closeMenu();
       searchInput.blur();
     }
@@ -1516,16 +1641,19 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
   // Search handler
   searchInput.addEventListener('input',function(){
-    activeSearch=normalize(searchInput.value.trim());
-    updateSearchClear();
-    updateClearAllBtn();
-    updateFiltered();
-    layout();
-    // Scroll to top when search changes
-    if(activeSearch&&!isMenuSearchEditing()) window.scrollTo({left:0,top:0,behavior:'instant'});
-    updateNoResults();
-    lastShownKey='';
-    updateNowShowing();
+    if(phoneMenuMode){
+      updateSearchClear();
+      updateClearAllBtn();
+      return;
+    }
+    applySearchFromInput();
+  });
+  searchApply.addEventListener('click',function(e){
+    if(isMenuGhostTap()) return;
+    e.stopPropagation();
+    applySearchFromInput();
+    closeMenu();
+    searchInput.blur();
   });
 
   // Filter items
@@ -1546,6 +1674,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     btn.dataset.city=city;
     btn.innerHTML=city+'<span class="menu-item-count">'+(cityCounts[city]||0)+'</span>';
     btn.addEventListener('click',function(){
+      if(isMenuGhostTap()) return;
       setFilter(city);
       closeMenu();
     });
@@ -1581,24 +1710,45 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       height:window.innerHeight||0
     };
   }
+  function computePhoneMenuMode(){
+    var coarseTouch=window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+    if(!coarseTouch) return false;
+    var vm=getMenuViewportMetrics();
+    var shortSide=Math.min(vm.width||0,vm.height||0);
+    var longSide=Math.max(vm.width||0,vm.height||0);
+    return shortSide>0&&shortSide<=520&&longSide<=980;
+  }
+  function syncPhoneMenuMode(){
+    var next=computePhoneMenuMode();
+    if(next===phoneMenuMode&&document.documentElement.classList.contains('phone-menu-mode')===next){
+      return;
+    }
+    phoneMenuMode=next;
+    document.documentElement.classList.toggle('phone-menu-mode',phoneMenuMode);
+    updateClearAllBtn();
+    if(menuOpen){
+      if(phoneMenuMode){
+        resetMenuDropdownPositionStyles();
+      }else{
+        scheduleMenuDropdownPosition();
+      }
+    }
+  }
 
   function positionMenuDropdown(){
     if(!menuOpen||!menuBtn) return;
+    if(phoneMenuMode){
+      resetMenuDropdownPositionStyles();
+      return;
+    }
     var vm=getMenuViewportMetrics();
     var viewportH=Math.round(vm.height||0);
     if(viewportH<=0) return;
     var viewportW=Math.max(0,Math.round(vm.width||window.innerWidth||document.documentElement.clientWidth||0));
     var btnRect=menuBtn.getBoundingClientRect();
-    var minTop=6;
-    var minVisibleHeight=88;
-    var top=Math.max(minTop,Math.round(btnRect.bottom+8));
+    var top=Math.max(6,Math.round(btnRect.bottom+8));
     var right=Math.max(0,Math.round(viewportW-btnRect.right));
-    var maxH=Math.round(viewportH-top-8);
-    if(maxH<minVisibleHeight){
-      top=minTop;
-      maxH=Math.round(viewportH-top-8);
-    }
-    maxH=Math.max(minVisibleHeight,Math.min(maxH,Math.max(minVisibleHeight,Math.round(viewportH-12))));
+    var maxH=Math.max(120,Math.round(viewportH-top-8));
     menuDropdown.style.position='fixed';
     menuDropdown.style.top=top+'px';
     menuDropdown.style.right=right+'px';
@@ -1608,8 +1758,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   }
 
   let menuPositionRafPending=false;
-  let menuSearchFocusScrollY=0;
-  let menuSearchScrollRestoreRaf=0;
   function scheduleMenuDropdownPosition(){
     if(!menuOpen) return;
     if(menuPositionRafPending) return;
@@ -1622,21 +1770,19 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   function isMenuSearchEditing(){
     return !!(menuOpen&&document.activeElement===searchInput);
   }
-  function scheduleMenuSearchScrollRestore(){
-    if(!isMenuSearchEditing()) return;
-    if(menuSearchScrollRestoreRaf) return;
-    menuSearchScrollRestoreRaf=requestAnimationFrame(function(){
-      menuSearchScrollRestoreRaf=0;
-      if(!isMenuSearchEditing()) return;
-      if(Math.abs((window.scrollY||0)-menuSearchFocusScrollY)>1){
-        window.scrollTo({left:0,top:menuSearchFocusScrollY,behavior:'instant'});
-      }
-      scheduleMenuDropdownPosition();
-    });
+  function isMenuGhostTap(){
+    return phoneMenuMode&&menuOpen&&(Date.now()-menuOpenedAt)<220;
+  }
+  function handleMenuViewportUpdate(){
+    syncPhoneMenuMode();
+    if(!menuOpen) return;
+    scheduleMenuDropdownPosition();
   }
 
   function openMenu(){
     menuOpen=true;
+    menuOpenedAt=Date.now();
+    syncPhoneMenuMode();
     menuDropdown.classList.add('open');
     menuOverlay.classList.add('open');
     scheduleMenuDropdownPosition();
@@ -1645,10 +1791,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   function closeMenu(){
     menuOpen=false;
     menuPositionRafPending=false;
-    if(menuSearchScrollRestoreRaf){
-      cancelAnimationFrame(menuSearchScrollRestoreRaf);
-      menuSearchScrollRestoreRaf=0;
-    }
     resetMenuDropdownPositionStyles();
     menuDropdown.classList.remove('open');
     menuOverlay.classList.remove('open');
@@ -1670,55 +1812,42 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
   menuBtn.addEventListener('click',function(e){
     e.stopPropagation();
-    if(menuOpen) closeMenu(); else openMenu();
+    if(menuOpen){
+      closeMenu();
+      return;
+    }
+    setTimeout(openMenu,0);
   });
   menuOverlay.addEventListener('click',closeMenu);
-  window.addEventListener('resize',function(){
-    if(!menuOpen) return;
-    scheduleMenuSearchScrollRestore();
-    scheduleMenuDropdownPosition();
-  });
+  window.addEventListener('resize',handleMenuViewportUpdate);
   if(window.visualViewport){
-    window.visualViewport.addEventListener('resize',function(){
-      if(!menuOpen) return;
-      scheduleMenuSearchScrollRestore();
-      scheduleMenuDropdownPosition();
-    });
-    window.visualViewport.addEventListener('scroll',function(){
-      if(!menuOpen) return;
-      scheduleMenuSearchScrollRestore();
-      scheduleMenuDropdownPosition();
-    });
+    window.visualViewport.addEventListener('resize',handleMenuViewportUpdate);
+    window.visualViewport.addEventListener('scroll',handleMenuViewportUpdate);
   }
   window.addEventListener('scroll',function(){
-    if(!menuOpen) return;
-    scheduleMenuSearchScrollRestore();
+    if(!menuOpen||phoneMenuMode) return;
     scheduleMenuDropdownPosition();
   },{passive:true});
   window.addEventListener('orientationchange',function(){
+    handleMenuViewportUpdate();
     if(!menuOpen) return;
-    scheduleMenuSearchScrollRestore();
     setTimeout(scheduleMenuDropdownPosition,80);
     setTimeout(scheduleMenuDropdownPosition,320);
   });
   searchInput.addEventListener('focus',function(){
     if(!menuOpen) return;
-    menuSearchFocusScrollY=window.scrollY||0;
-    scheduleMenuSearchScrollRestore();
-    setTimeout(scheduleMenuSearchScrollRestore,60);
-    setTimeout(scheduleMenuSearchScrollRestore,180);
-    setTimeout(scheduleMenuSearchScrollRestore,320);
+    handleMenuViewportUpdate();
+    setTimeout(handleMenuViewportUpdate,60);
+    setTimeout(handleMenuViewportUpdate,180);
     scheduleMenuDropdownPosition();
     setTimeout(scheduleMenuDropdownPosition,120);
   });
   searchInput.addEventListener('blur',function(){
     if(!menuOpen) return;
-    if(menuSearchScrollRestoreRaf){
-      cancelAnimationFrame(menuSearchScrollRestoreRaf);
-      menuSearchScrollRestoreRaf=0;
-    }
+    handleMenuViewportUpdate();
     setTimeout(scheduleMenuDropdownPosition,80);
   });
+  syncPhoneMenuMode();
 
   // Header title: scroll to top (does not interfere with hamburger button)
   var titleTap=document.getElementById('titleTap');
