@@ -5,7 +5,7 @@
 <!-- Keep shrink-to-fit disabled to prevent iPad Safari portrait auto-shrink after rotation. -->
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, shrink-to-fit=no">
 <meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#111111">
+<meta name="theme-color" content="transparent">
 <title>Japan Spring 2025</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -563,8 +563,8 @@
     width:36px;height:36px;
     border-radius:50%;
     border:none;
-    background:rgba(17,17,17,.78);
-    color:#f5f5f5;
+    background:var(--text);
+    color:var(--bg);
     font-size:.85rem;
     cursor:pointer;
     opacity:0;
@@ -573,10 +573,6 @@
     transform:translateY(8px);
     display:flex;align-items:center;justify-content:center;
     box-shadow:0 2px 10px rgba(0,0,0,.15);
-  }
-  html.ios-mobile-safari .scroll-top{
-    /* Keep this control away from Safari's bottom toolbar color sampling area. */
-    bottom:calc(84px + env(safe-area-inset-bottom));
   }
   .scroll-top.visible{
     opacity:.5;
@@ -589,9 +585,6 @@
       bottom:max(16px, calc(8px + env(safe-area-inset-bottom)));
       right:max(16px, calc(8px + env(safe-area-inset-right)));
       width:32px;height:32px;font-size:.75rem
-    }
-    html.ios-mobile-safari .scroll-top{
-      bottom:calc(76px + env(safe-area-inset-bottom));
     }
   }
 
@@ -882,7 +875,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   function currentThemeColor(){
     var lightboxEl=document.getElementById('lightbox');
     if(lightboxEl&&lightboxEl.classList.contains('active')) return '#000000';
-    return darkModeQuery.matches?'#111111':'#f5f5f5';
+    return 'transparent';
   }
   function applyThemeColor(){
     themeColorMeta.setAttribute('content',currentThemeColor());
@@ -1007,8 +1000,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const isSafariBrowser=/Safari/i.test(ua)&&!/Chrome|CriOS|FxiOS|EdgiOS|OPiOS|OPR|Android/i.test(ua);
   const isFirefoxBrowser=/Firefox/i.test(ua)&&!/FxiOS/i.test(ua);
   const isFirefoxMobileBrowser=/Firefox|FxiOS/i.test(ua)&&(navigator.maxTouchPoints>0||isCoarsePointer);
-  const isMobileSafari=isSafariBrowser&&isIOSLike&&(navigator.maxTouchPoints>0||isCoarsePointer);
-  document.documentElement.classList.toggle('ios-mobile-safari',isMobileSafari);
   document.documentElement.classList.toggle('firefox-mobile-bottom-cover',isFirefoxMobileBrowser);
   const isChromeMobileBrowser=/Chrome|CriOS/i.test(ua)&&!/EdgA|EdgiOS|OPR|OPiOS|SamsungBrowser|YaBrowser|UCBrowser/i.test(ua)&&(/Android/i.test(ua)||/CriOS/i.test(ua));
   const INITIAL_EAGER = isIOSLike
