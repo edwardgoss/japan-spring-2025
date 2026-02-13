@@ -655,16 +655,20 @@
     }
   }
 
-  /* Chrome mobile portrait: reserve a small top control gutter so tall
-     portrait photos do not sit under the close button. */
+  /* Mobile portrait: reserve a top control gutter so tall portrait photos
+     do not sit under the close button or corner loading indicator. */
   @media (orientation: portrait) and (hover: none) and (pointer: coarse){
-    html.chrome-mobile .lightbox{
-      --lightbox-top-clearance:calc(34px + env(safe-area-inset-top));
+    .lightbox{
+      --lightbox-top-clearance:calc(30px + env(safe-area-inset-top));
     }
-    html.chrome-mobile .lightbox img{
+    .lightbox img{
       max-height:calc(100vh - var(--caption-h,80px) - (var(--lightbox-photo-gap) * 2) - var(--lightbox-top-clearance));
       max-height:calc(100dvh - var(--caption-h,80px) - (var(--lightbox-photo-gap) * 2) - var(--lightbox-top-clearance));
       margin-top:calc(var(--lightbox-photo-gap) + var(--lightbox-top-clearance));
+    }
+    .lightbox-spinner{
+      width:30px;
+      height:30px;
     }
   }
 
@@ -853,9 +857,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const isSafariBrowser=/Safari/i.test(ua)&&!/Chrome|CriOS|FxiOS|EdgiOS|OPiOS|OPR|Android/i.test(ua);
   const isFirefoxBrowser=/Firefox/i.test(ua)&&!/FxiOS/i.test(ua);
   const isChromeMobileBrowser=/Chrome|CriOS/i.test(ua)&&!/EdgA|EdgiOS|OPR|OPiOS|SamsungBrowser|YaBrowser|UCBrowser/i.test(ua)&&(/Android/i.test(ua)||/CriOS/i.test(ua));
-  if(isChromeMobileBrowser){
-    document.documentElement.classList.add('chrome-mobile');
-  }
   const INITIAL_EAGER = isIOSLike
     ? (isIPadLike?8:9)
     : (window.innerWidth <= 800 ? (isSafariBrowser ? 14 : 10) : (isSafariBrowser ? 18 : 14));
