@@ -79,6 +79,15 @@
     padding-top:var(--header-offset,0px);
     touch-action:manipulation;
   }
+  html.ios-safari-underbar-transparent{
+    background:transparent;
+  }
+  html.ios-safari-underbar-transparent body{
+    background:transparent;
+  }
+  html.ios-safari-underbar-transparent .gallery{
+    background:transparent;
+  }
   body.menu-open{
     overflow:hidden;
     position:fixed;
@@ -971,6 +980,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const isSafariBrowser=/Safari/i.test(ua)&&!/Chrome|CriOS|FxiOS|EdgiOS|OPiOS|OPR|Android/i.test(ua);
   const isFirefoxBrowser=/Firefox/i.test(ua)&&!/FxiOS/i.test(ua);
   const isFirefoxMobileBrowser=/Firefox|FxiOS/i.test(ua)&&(navigator.maxTouchPoints>0||window.matchMedia('(hover:none) and (pointer:coarse)').matches);
+  document.documentElement.classList.toggle('ios-safari-underbar-transparent',isSafariBrowser&&isIOSLike);
   document.documentElement.classList.toggle('firefox-mobile-bottom-cover',isFirefoxMobileBrowser);
   const isChromeMobileBrowser=/Chrome|CriOS/i.test(ua)&&!/EdgA|EdgiOS|OPR|OPiOS|SamsungBrowser|YaBrowser|UCBrowser/i.test(ua)&&(/Android/i.test(ua)||/CriOS/i.test(ua));
   const INITIAL_EAGER = isIOSLike
