@@ -461,7 +461,7 @@
   .lightbox-close:hover{opacity:1}
 
   .lightbox-nav{
-    position:absolute;top:calc(50% - var(--caption-h,80px) / 2);transform:translateY(-50%);
+    position:absolute;top:var(--lightbox-nav-top, calc(50% - var(--caption-h,80px) / 2));transform:translateY(-50%);
     background:none;border:none;
     color:#fff;font-size:2.4rem;
     cursor:pointer;opacity:.5;
@@ -1340,6 +1340,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const lbCounter=lightbox.querySelector('.lightbox-counter');
   const lbCaption=lightbox.querySelector('.lightbox-caption');
   const lbLocation=lightbox.querySelector('.lightbox-location');
+  const lbPrev=lightbox.querySelector('.lightbox-prev');
+  const lbNext=lightbox.querySelector('.lightbox-next');
   // Create the 'more' button and inject it — it lives inside lbLocation so it flows inline
   var lbMore=document.createElement('button');
   lbMore.className='lightbox-more';
@@ -1347,10 +1349,22 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   lbMore.textContent='more';
   lbLocation.appendChild(lbMore);
 
+  function updateLightboxNavCenter(){
+    if(!lightbox.classList.contains('active')) return;
+    var lightboxRect=lightbox.getBoundingClientRect();
+    var imgRect=lbImg.getBoundingClientRect();
+    var centerY=(lightbox.clientHeight-(lbCaption.offsetHeight||80))/2;
+    if(imgRect.width>0&&imgRect.height>0){
+      centerY=(imgRect.top-lightboxRect.top)+(imgRect.height/2);
+    }
+    lightbox.style.setProperty('--lightbox-nav-top',Math.round(centerY)+'px');
+  }
+
   function updateCaptionHeight(){
     if(!lightbox.classList.contains('active')) return;
     var h=lbCaption.offsetHeight||80;
     lightbox.style.setProperty('--caption-h',h+'px');
+    updateLightboxNavCenter();
   }
 
   // ── Caption truncation (mobile portrait only) ──
@@ -2849,9 +2863,11 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     beginLightboxLoadingState();
     lbImg.onload=function(){
       endLightboxLoadingState();
+      requestAnimationFrame(updateLightboxNavCenter);
     };
     lbImg.onerror=function(){
       endLightboxLoadingState();
+      updateLightboxNavCenter();
     };
     lbImg.src=photoSrc(realIdx);
     lbImg.alt='Japan Spring 2025 - Photo '+photoNum;
@@ -2869,8 +2885,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     lbCounter.innerHTML=(current+1)+' <span class="lightbox-sep">\u00b7</span> '+filtered.length;
 
     // Hide nav arrows at boundaries
-    lightbox.querySelector('.lightbox-prev').style.display=current<=0?'none':'';
-    lightbox.querySelector('.lightbox-next').style.display=current>=filtered.length-1?'none':'';
+    lbPrev.style.display=current<=0?'none':'';
+    lbNext.style.display=current>=filtered.length-1?'none':'';
 
     lightbox.classList.add('active');
     document.body.style.overflow='hidden';
@@ -2883,6 +2899,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     // Measure caption height so image fits above it, then check truncation
     requestAnimationFrame(function(){
       scheduleCaptionClampPasses();
+      updateLightboxNavCenter();
     });
 
     // Preload adjacent full-res images for snappy navigation.
@@ -2906,6 +2923,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     lbImg.src='';
     resetLightboxPreloaders();
     lightbox.style.removeProperty('--caption-h');
+    lightbox.style.removeProperty('--lightbox-nav-top');
     resetCaptionClamp();
 
     // Exiting from rotated lightbox: stop gallery orientation settle re-anchors.
@@ -2941,8 +2959,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   }
 
   lightbox.querySelector('.lightbox-close').addEventListener('click',closeLightbox);
-  lightbox.querySelector('.lightbox-prev').addEventListener('click',function(){navigate(-1)});
-  lightbox.querySelector('.lightbox-next').addEventListener('click',function(){navigate(1)});
+  lbPrev.addEventListener('click',function(){navigate(-1)});
+  lbNext.addEventListener('click',function(){navigate(1)});
 
 
   lightbox.addEventListener('click',function(e){
