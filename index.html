@@ -1909,13 +1909,16 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   let rotationAnchorLocked=false;
   let suppressAnchorTrackingScroll=false;
   const useCustomOrientationAnchoring=true;
-  const useEarlyPhoneOrientationAnchor=isCoarsePointer&&!isIPadLike;
+  // Safari has its own dedicated early-anchor path; all other touch browsers
+  // share the same orientation stabilization flow (phones + tablets).
+  const useEarlyPhoneOrientationAnchor=isCoarsePointer&&!isSafariBrowser;
   const ORIENTATION_SETTLE_MS=isSafariBrowser?640:420;
   const ORIENTATION_FINALIZE_DELAY_MS=isSafariBrowser?560:360;
   const ORIENTATION_UI_SETTLE_MS=isSafariBrowser?720:520;
   const USER_SCROLL_INTENT_WINDOW_MS=280;
   const SCROLL_ACTIVITY_WINDOW_MS=520;
   const CHROME_MID_SCROLL_WINDOW_MS=700;
+  const RECENT_SCROLL_ANCHOR_MAX_AGE_MS=isCoarsePointer?320:900;
   let lastUserScrollIntentAt=0;
   let lastScrollEventAt=0;
   let orientationChangeStartedAt=0;
@@ -1972,6 +1975,16 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   function isChromeMidScrollAtOrientation(nowTs){
     if(!isChromeMobileBrowser||!isCoarsePointer) return false;
     return (nowTs-lastScrollEventAt)<=CHROME_MID_SCROLL_WINDOW_MS;
+  }
+
+  function shouldUseLatestScrollAnchor(nowTs){
+    if(!latestScrollAnchor||!latestScrollAnchorAt) return false;
+    var ageMs=nowTs-latestScrollAnchorAt;
+    var maxAgeMs=RECENT_SCROLL_ANCHOR_MAX_AGE_MS;
+    if(isScrollRecentlyActive(nowTs)||hasRecentUserScrollIntent(nowTs)){
+      maxAgeMs=Math.min(maxAgeMs,220);
+    }
+    return ageMs<=maxAgeMs;
   }
 
   function shouldSkipForcedOrientationAnchor(){
@@ -2413,7 +2426,14 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       useEarlyPhoneOrientationAnchor&&
       widthDelta>120
     ){
-      var preOrientationAnchor=latestScrollAnchor?cloneGalleryAnchor(latestScrollAnchor):captureGalleryScrollAnchor(true);
+      var preOrientationAnchor=captureGalleryScrollAnchor(true);
+      if(
+        !preOrientationAnchor&&
+        latestScrollAnchor&&
+        (nowTs-latestScrollAnchorAt)<=1200
+      ){
+        preOrientationAnchor=cloneGalleryAnchor(latestScrollAnchor);
+      }
       if(preOrientationAnchor){
         if(TRACE_ENABLED)traceLog('resize_pre_orientation_force_anchor',{
           widthDelta:traceRound(widthDelta),
@@ -2455,7 +2475,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
           updateNowShowing();
         }
       }else{
-        // Larger non-Safari devices keep resize-settle layout-only behavior.
+        // Fallback only; non-Safari touch browsers should generally be in the
+        // early-anchor path above.
         if(TRACE_ENABLED)traceLog('resize_in_settle_non_safari_layout_only_large_device');
         layout();
         updateNowShowing();
@@ -2517,7 +2538,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       return;
     }
     var usedCachedAnchor=false;
-    if(latestScrollAnchor&&(nowTs-latestScrollAnchorAt)<=900){
+    if(shouldUseLatestScrollAnchor(nowTs)){
       preferredRotationAnchor=cloneGalleryAnchor(latestScrollAnchor);
       usedCachedAnchor=true;
     }else{
