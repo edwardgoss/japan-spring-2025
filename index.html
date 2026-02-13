@@ -1914,6 +1914,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   let safariOrientationAnchorApplied=false;
   let safariEarlyAnchorToken=0;
   let chromeMidScrollRotation=false;
+  let latestScrollAnchor=null;
+  let latestScrollAnchorAt=0;
   const viewportMeta=document.querySelector('meta[name="viewport"]');
   let baseViewportMetaContent=viewportMeta?viewportMeta.getAttribute('content')||'':'';
   let chromeViewportCheckTimerA=null;
@@ -1963,6 +1965,14 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
   function shouldSkipForcedOrientationAnchor(){
     return Date.now()<orientationSettleUntil&&userScrolledDuringOrientationSettle;
+  }
+
+  function refreshLatestScrollAnchor(){
+    if(lightbox.classList.contains('active')) return;
+    var anchor=captureGalleryScrollAnchor(true);
+    if(!anchor) return;
+    latestScrollAnchor=cloneGalleryAnchor(anchor);
+    latestScrollAnchorAt=Date.now();
   }
 
   window.addEventListener('touchstart',markUserScrollIntent,{passive:true});
@@ -2057,7 +2067,10 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   function healChromeViewportIfNeeded(force){
     if(!isChromeMobileBrowser) return;
     if(isLightboxPinchZoomActive()) return;
-    var unhealthy=isChromeViewportUnhealthy();
+    var zoomed=!!(window.visualViewport&&window.visualViewport.scale>1.01);
+    var mismatch=hasChromeViewportOrientationMismatch();
+    var xOffset=Math.abs(window.scrollX||window.pageXOffset||0)>1;
+    var unhealthy=zoomed||mismatch||xOffset;
     if(!force&&!unhealthy) return;
     var nowTs=Date.now();
     if(chromeMidScrollRotation&&nowTs<orientationSettleUntil+140){
@@ -2077,6 +2090,11 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       (nowTs<orientationSettleUntil&&userScrolledDuringOrientationSettle)
     ){
       scheduleChromeViewportHealthCheck(170,false);
+      return;
+    }
+    if(!xOffset){
+      // For pure orientation/scale corrections, avoid forced scroll writes
+      // that can perturb vertical position during or right after rotation.
       return;
     }
     resetHorizontalViewportOffset();
@@ -2176,6 +2194,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       });
       preferredRotationAnchor=cloneGalleryAnchor(anchor);
     }
+    refreshLatestScrollAnchor();
     updateNowShowing();
   }
 
@@ -2313,7 +2332,11 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       pendingLayoutAfterLightbox=true;
       return;
     }
-    updatePreferredRotationAnchor();
+    if(latestScrollAnchor&&(nowTs-latestScrollAnchorAt)<=900){
+      preferredRotationAnchor=cloneGalleryAnchor(latestScrollAnchor);
+    }else{
+      updatePreferredRotationAnchor();
+    }
     rotationAnchorLocked=true;
     if(!userScrolledDuringOrientationSettle){
       if(isSafariBrowser){
@@ -2366,6 +2389,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
         }
         if(!suppressAnchorTrackingScroll&&!lightbox.classList.contains('active')){
           rotationAnchorLocked=false;
+        }
+        if(!suppressAnchorTrackingScroll&&!lightbox.classList.contains('active')){
+          refreshLatestScrollAnchor();
         }
         if(!isFirefoxBrowser&&now-lastNowShowingScrollUpdate>=NOW_SHOWING_SCROLL_INTERVAL){
           updateNowShowing();
