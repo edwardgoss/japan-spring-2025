@@ -1900,7 +1900,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   let lastRelayoutViewportWidth=0;
   let rotationAnchorLocked=false;
   let suppressAnchorTrackingScroll=false;
-  const useCustomOrientationAnchoring=isSafariBrowser||!isCoarsePointer;
+  const useCustomOrientationAnchoring=true;
   const ORIENTATION_SETTLE_MS=isSafariBrowser?640:420;
   const ORIENTATION_FINALIZE_DELAY_MS=isSafariBrowser?560:360;
   const ORIENTATION_UI_SETTLE_MS=isSafariBrowser?720:520;
@@ -1908,6 +1908,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const SCROLL_ACTIVITY_WINDOW_MS=520;
   let lastUserScrollIntentAt=0;
   let lastScrollEventAt=0;
+  let orientationChangeStartedAt=0;
   let userScrolledDuringOrientationSettle=false;
   let safariOrientationAnchorApplied=false;
   let safariEarlyAnchorToken=0;
@@ -1948,11 +1949,19 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     return (nowTs-lastScrollEventAt)<=SCROLL_ACTIVITY_WINDOW_MS;
   }
 
+  function hasUserScrollIntentSinceOrientation(nowTs){
+    if(!orientationChangeStartedAt) return false;
+    return lastUserScrollIntentAt>orientationChangeStartedAt+24&&nowTs<orientationSettleUntil;
+  }
+
   function shouldSkipForcedOrientationAnchor(){
     return Date.now()<orientationSettleUntil&&userScrolledDuringOrientationSettle;
   }
 
   window.addEventListener('touchstart',markUserScrollIntent,{passive:true});
+  if(isCoarsePointer){
+    window.addEventListener('touchmove',markUserScrollIntent,{passive:true});
+  }
   window.addEventListener('pointerdown',markUserScrollIntent,{passive:true});
   window.addEventListener('wheel',markUserScrollIntent,{passive:true});
 
@@ -2244,7 +2253,11 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       pendingLayoutAfterLightbox=true;
       return;
     }
-    var inOrientationSettle=Date.now()<orientationSettleUntil;
+    var nowTs=Date.now();
+    if(hasUserScrollIntentSinceOrientation(nowTs)){
+      userScrolledDuringOrientationSettle=true;
+    }
+    var inOrientationSettle=nowTs<orientationSettleUntil;
     if(!shouldRunResizeRelayout(inOrientationSettle)) return;
     if(inOrientationSettle&&(!useCustomOrientationAnchoring||userScrolledDuringOrientationSettle)){
       // Mid-scroll rotations should not force-anchor to older geometry snapshots.
@@ -2273,27 +2286,18 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   });
   window.addEventListener('orientationchange',function(){
     var nowTs=Date.now();
+    orientationChangeStartedAt=nowTs;
     orientationSettleUntil=nowTs+ORIENTATION_SETTLE_MS;
     userScrolledDuringOrientationSettle=false;
     safariOrientationAnchorApplied=false;
     safariEarlyAnchorToken++;
-    if(!useCustomOrientationAnchoring){
-      userScrolledDuringOrientationSettle=true;
-    }
-    if(hasRecentUserScrollIntent(nowTs)||isScrollRecentlyActive(nowTs)){
-      userScrolledDuringOrientationSettle=true;
-    }
     lastRelayoutViewportWidth=getLayoutViewportWidth();
     startOrientationUiSettle();
     if(lightbox.classList.contains('active')){
       pendingLayoutAfterLightbox=true;
       return;
     }
-    if(userScrolledDuringOrientationSettle){
-      preferredRotationAnchor=null;
-    }else{
-      updatePreferredRotationAnchor();
-    }
+    updatePreferredRotationAnchor();
     rotationAnchorLocked=true;
     if(!userScrolledDuringOrientationSettle){
       if(isSafariBrowser){
@@ -2336,10 +2340,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
         var now=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
         var nowTs=Date.now();
         lastScrollEventAt=nowTs;
-        if(nowTs<orientationSettleUntil){
-          if(!isSafariBrowser||hasRecentUserScrollIntent(nowTs)){
-            userScrolledDuringOrientationSettle=true;
-          }
+        if(hasUserScrollIntentSinceOrientation(nowTs)){
+          userScrolledDuringOrientationSettle=true;
         }
         if(!suppressAnchorTrackingScroll&&!lightbox.classList.contains('active')){
           rotationAnchorLocked=false;
