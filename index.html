@@ -5,7 +5,7 @@
 <!-- Keep shrink-to-fit disabled to prevent iPad Safari portrait auto-shrink after rotation. -->
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, shrink-to-fit=no">
 <meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="transparent">
+<meta name="theme-color" content="#111111">
 <title>Japan Spring 2025</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -409,7 +409,6 @@
     height:var(--lightbox-vh,100vh);
     height:var(--lightbox-vh,100dvh);
     z-index:100;
-    background:var(--lightbox-bg);
     --lightbox-top-clearance:0px;
     --lightbox-spinner-size:32px;
     --lightbox-bottom-cover:0px;
@@ -425,6 +424,7 @@
   .lightbox.active{
     display:grid;
     opacity:1;
+    background:var(--lightbox-bg);
   }
   .lightbox.active::after{
     content:"";
@@ -875,7 +875,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   function currentThemeColor(){
     var lightboxEl=document.getElementById('lightbox');
     if(lightboxEl&&lightboxEl.classList.contains('active')) return '#000000';
-    return 'transparent';
+    return darkModeQuery.matches?'#111111':'#f5f5f5';
   }
   function applyThemeColor(){
     themeColorMeta.setAttribute('content',currentThemeColor());
