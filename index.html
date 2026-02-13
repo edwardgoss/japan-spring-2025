@@ -386,7 +386,11 @@
 
   /* ── Lightbox ── */
   .lightbox{
-    position:fixed;inset:0;z-index:100;
+    position:fixed;
+    top:0;left:0;right:0;
+    height:100vh;
+    height:100dvh;
+    z-index:100;
     background:var(--lightbox-bg);
     --lightbox-top-clearance:0px;
     --lightbox-spinner-size:32px;
@@ -398,6 +402,13 @@
     transition:opacity .25s ease;
     touch-action:pinch-zoom;
     overflow:hidden;
+  }
+  @supports (height:100lvh){
+    .lightbox{
+      /* Use large viewport height where available so collapsing browser chrome
+         cannot reveal page content below the modal. */
+      height:100lvh;
+    }
   }
   .lightbox.active{
     display:grid;
@@ -2071,8 +2082,14 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     return mediaLandscape!==layoutLandscape;
   }
 
+  function isLightboxPinchZoomActive(){
+    return !!(lightbox&&lightbox.classList.contains('active')&&isViewportPinchScaled());
+  }
+
   function isChromeViewportUnhealthy(){
     if(!isChromeMobileBrowser) return false;
+    // In lightbox, pinch-zoom is intentional; do not treat it as viewport corruption.
+    if(isLightboxPinchZoomActive()) return false;
     var zoomed=!!(window.visualViewport&&window.visualViewport.scale>1.01);
     var mismatch=hasChromeViewportOrientationMismatch();
     var xOffset=Math.abs(window.scrollX||window.pageXOffset||0)>1;
@@ -2081,6 +2098,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
   function healChromeViewportIfNeeded(force){
     if(!isChromeMobileBrowser) return;
+    if(isLightboxPinchZoomActive()) return;
     if(!force&&!isChromeViewportUnhealthy()) return;
     applyChromeNoZoomViewport();
     resetHorizontalViewportOffset();
@@ -2116,10 +2134,12 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   applyChromeNoZoomViewport();
   scheduleChromeViewportHealthCheck(40,true);
   window.addEventListener('resize',function(){
+    if(lightbox.classList.contains('active')) return;
     scheduleChromeViewportHealthCheck(130,false);
   });
   if(window.visualViewport){
     window.visualViewport.addEventListener('resize',function(){
+      if(lightbox.classList.contains('active')) return;
       scheduleChromeViewportHealthCheck(90,false);
     });
   }
