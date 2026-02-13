@@ -79,14 +79,13 @@
     padding-top:var(--header-offset,0px);
     touch-action:manipulation;
   }
-  html.ios-safari-underbar-transparent{
+  html.ios-mobile-safari{
     background:transparent;
   }
-  html.ios-safari-underbar-transparent body{
+  html.ios-mobile-safari body{
     background:transparent;
-  }
-  html.ios-safari-underbar-transparent .gallery{
-    background:transparent;
+    /* Let photos render beneath Safari's floating address bar region. */
+    padding-top:0;
   }
   body.menu-open{
     overflow:hidden;
@@ -975,12 +974,14 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const TOTAL=227;
   const GAP=6;
   const ua=navigator.userAgent||'';
+  const isCoarsePointer=window.matchMedia('(hover:none) and (pointer:coarse)').matches;
   const isIOSLike=/iPad|iPhone|iPod/i.test(ua)||((navigator.platform||'')==='MacIntel'&&navigator.maxTouchPoints>1);
   const isIPadLike=/iPad/i.test(ua)||((navigator.platform||'')==='MacIntel'&&navigator.maxTouchPoints>1);
   const isSafariBrowser=/Safari/i.test(ua)&&!/Chrome|CriOS|FxiOS|EdgiOS|OPiOS|OPR|Android/i.test(ua);
   const isFirefoxBrowser=/Firefox/i.test(ua)&&!/FxiOS/i.test(ua);
-  const isFirefoxMobileBrowser=/Firefox|FxiOS/i.test(ua)&&(navigator.maxTouchPoints>0||window.matchMedia('(hover:none) and (pointer:coarse)').matches);
-  document.documentElement.classList.toggle('ios-safari-underbar-transparent',isSafariBrowser&&isIOSLike);
+  const isFirefoxMobileBrowser=/Firefox|FxiOS/i.test(ua)&&(navigator.maxTouchPoints>0||isCoarsePointer);
+  const isMobileSafari=isSafariBrowser&&isIOSLike&&(navigator.maxTouchPoints>0||isCoarsePointer);
+  document.documentElement.classList.toggle('ios-mobile-safari',isMobileSafari);
   document.documentElement.classList.toggle('firefox-mobile-bottom-cover',isFirefoxMobileBrowser);
   const isChromeMobileBrowser=/Chrome|CriOS/i.test(ua)&&!/EdgA|EdgiOS|OPR|OPiOS|SamsungBrowser|YaBrowser|UCBrowser/i.test(ua)&&(/Android/i.test(ua)||/CriOS/i.test(ua));
   const INITIAL_EAGER = isIOSLike
