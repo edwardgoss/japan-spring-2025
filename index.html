@@ -838,14 +838,102 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const pendingPromotionQueue=[];
   const pendingPromotionSet=new Set();
   let lazyObserver=null;
-  const TRACE_ENABLED=false;
+  const TRACE_ENABLED=/(?:\?|&)trace=1(?:&|$)/.test(window.location.search);
+  const TRACE_MAX_EVENTS=700;
+  const traceEvents=[];
 
   function traceRound(value){
     var n=Number(value);
     return Number.isFinite(n)?Math.round(n):null;
   }
 
-  function traceLog(){}
+  function traceStateSnapshot(){
+    var vv=window.visualViewport;
+    return{
+      y:traceRound(window.scrollY||window.pageYOffset||0),
+      x:traceRound(window.scrollX||window.pageXOffset||0),
+      iw:traceRound(window.innerWidth||0),
+      ih:traceRound(window.innerHeight||0),
+      cw:traceRound(document.documentElement.clientWidth||0),
+      ch:traceRound(document.documentElement.clientHeight||0),
+      orientation:window.matchMedia('(orientation:landscape)').matches?'landscape':'portrait',
+      vvW:vv?traceRound(vv.width):null,
+      vvH:vv?traceRound(vv.height):null,
+      vvScale:vv&&typeof vv.scale==='number'?Number(vv.scale.toFixed(3)):null
+    };
+  }
+
+  function traceLog(tag,meta){
+    if(!TRACE_ENABLED) return;
+    var entry=Object.assign({
+      t:Date.now(),
+      tag:String(tag||'event')
+    },traceStateSnapshot(),meta||{});
+    traceEvents.push(entry);
+    if(traceEvents.length>TRACE_MAX_EVENTS){
+      traceEvents.splice(0,traceEvents.length-TRACE_MAX_EVENTS);
+    }
+  }
+
+  function buildTracePayload(){
+    return JSON.stringify({
+      generatedAt:new Date().toISOString(),
+      href:window.location.href,
+      ua:ua,
+      events:traceEvents
+    },null,2);
+  }
+
+  function copyTracePayload(){
+    var payload=buildTracePayload();
+    if(navigator.clipboard&&typeof navigator.clipboard.writeText==='function'){
+      navigator.clipboard.writeText(payload).catch(function(){
+        window.prompt('Copy trace payload',payload);
+      });
+      return;
+    }
+    window.prompt('Copy trace payload',payload);
+  }
+
+  function installTraceUi(){
+    if(!TRACE_ENABLED) return;
+    var dock=document.createElement('div');
+    dock.style.cssText='position:fixed;left:10px;bottom:10px;z-index:9999;display:flex;gap:8px;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;';
+    var copyBtn=document.createElement('button');
+    copyBtn.type='button';
+    copyBtn.textContent='Copy Trace';
+    copyBtn.style.cssText='padding:8px 10px;border:1px solid rgba(0,0,0,.25);border-radius:8px;background:#111;color:#fff;font-size:12px;line-height:1;opacity:.92;';
+    copyBtn.addEventListener('click',function(){
+      copyTracePayload();
+      copyBtn.textContent='Copied';
+      setTimeout(function(){ copyBtn.textContent='Copy Trace'; },1200);
+    });
+    var clearBtn=document.createElement('button');
+    clearBtn.type='button';
+    clearBtn.textContent='Clear';
+    clearBtn.style.cssText='padding:8px 10px;border:1px solid rgba(0,0,0,.18);border-radius:8px;background:#fff;color:#111;font-size:12px;line-height:1;opacity:.92;';
+    clearBtn.addEventListener('click',function(){
+      traceEvents.length=0;
+      traceLog('trace_cleared');
+    });
+    dock.appendChild(copyBtn);
+    dock.appendChild(clearBtn);
+    document.body.appendChild(dock);
+  }
+
+  window.__galleryTraceEvents=traceEvents;
+  window.__copyGalleryTrace=copyTracePayload;
+  if(TRACE_ENABLED){
+    if(document.readyState==='loading'){
+      document.addEventListener('DOMContentLoaded',function(){
+        installTraceUi();
+        traceLog('trace_enabled');
+      },{once:true});
+    }else{
+      installTraceUi();
+      traceLog('trace_enabled');
+    }
+  }
 
   function drainPromotionQueue(){
     if(!isSafariBrowser) return;
