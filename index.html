@@ -1571,6 +1571,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     menuDropdown.style.top=top+'px';
     menuDropdown.style.right=right+'px';
   }
+  function isMenuSearchEditing(){
+    return !!(menuOpen&&document.activeElement===searchInput);
+  }
 
   function openMenu(){
     positionMenuDropdown();
@@ -1604,16 +1607,25 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   });
   menuOverlay.addEventListener('click',closeMenu);
   window.addEventListener('resize',function(){
-    if(menuOpen) positionMenuDropdown();
+    if(!menuOpen) return;
+    if(isMenuSearchEditing()) return;
+    positionMenuDropdown();
   });
   if(window.visualViewport){
     window.visualViewport.addEventListener('resize',function(){
-      if(menuOpen) positionMenuDropdown();
+      if(!menuOpen) return;
+      if(isMenuSearchEditing()) return;
+      positionMenuDropdown();
     });
   }
   window.addEventListener('orientationchange',function(){
     if(!menuOpen) return;
+    if(isMenuSearchEditing()) return;
     setTimeout(positionMenuDropdown,300);
+  });
+  searchInput.addEventListener('blur',function(){
+    if(!menuOpen) return;
+    setTimeout(positionMenuDropdown,80);
   });
 
   // Header title: scroll to top (does not interfere with hamburger button)
