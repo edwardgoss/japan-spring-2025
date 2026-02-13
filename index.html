@@ -1523,7 +1523,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     updateFiltered();
     layout();
     // Scroll to top when search changes
-    if(activeSearch) window.scrollTo({left:0,top:0,behavior:'instant'});
+    if(activeSearch&&!isMenuSearchEditing()) window.scrollTo({left:0,top:0,behavior:'instant'});
     updateNoResults();
     lastShownKey='';
     updateNowShowing();
@@ -1573,24 +1573,38 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     menuDropdown.style.right=right+'px';
   }
   let menuPositionLockedForEditing=false;
+  let menuLockedVisualTop=0;
+  let menuLockedRight=0;
+  function getMenuViewportMetrics(){
+    if(window.visualViewport){
+      return{
+        top:window.visualViewport.offsetTop||0,
+        height:window.visualViewport.height||window.innerHeight||0
+      };
+    }
+    return{
+      top:0,
+      height:window.innerHeight||0
+    };
+  }
   function syncLockedMenuDropdownHeight(){
     if(!menuPositionLockedForEditing) return;
-    var top=parseFloat(menuDropdown.style.top);
-    if(!Number.isFinite(top)) return;
-    var viewportH=window.visualViewport
-      ? (window.visualViewport.height||0)+(window.visualViewport.offsetTop||0)
-      : (window.innerHeight||0);
-    if(viewportH<=0) return;
-    var maxH=Math.max(120,Math.round(viewportH-top-8));
+    var vm=getMenuViewportMetrics();
+    if(vm.height<=0) return;
+    var top=Math.max(0,Math.round(menuLockedVisualTop+vm.top));
+    var maxH=Math.max(120,Math.round(vm.height-menuLockedVisualTop-8));
+    menuDropdown.style.top=top+'px';
+    menuDropdown.style.right=menuLockedRight+'px';
     menuDropdown.style.maxHeight=maxH+'px';
   }
   function lockMenuDropdownForEditing(){
     if(menuPositionLockedForEditing||!menuOpen) return;
     var rect=menuDropdown.getBoundingClientRect();
-    var right=Math.max(0,Math.round((window.innerWidth||0)-rect.right));
+    menuLockedVisualTop=Math.max(0,Math.round(rect.top));
+    menuLockedRight=Math.max(0,Math.round((window.innerWidth||0)-rect.right));
     menuDropdown.style.position='fixed';
-    menuDropdown.style.top=Math.max(0,Math.round(rect.top))+'px';
-    menuDropdown.style.right=right+'px';
+    menuDropdown.style.top=menuLockedVisualTop+'px';
+    menuDropdown.style.right=menuLockedRight+'px';
     menuDropdown.style.left='auto';
     menuDropdown.style.bottom='auto';
     menuPositionLockedForEditing=true;
@@ -1605,6 +1619,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     menuDropdown.style.removeProperty('left');
     menuDropdown.style.removeProperty('bottom');
     menuDropdown.style.removeProperty('max-height');
+    menuLockedVisualTop=0;
+    menuLockedRight=0;
   }
   function isMenuSearchEditing(){
     return !!(menuOpen&&document.activeElement===searchInput);
@@ -1659,7 +1675,17 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       }
       positionMenuDropdown();
     });
+    window.visualViewport.addEventListener('scroll',function(){
+      if(!menuOpen) return;
+      if(!isMenuSearchEditing()) return;
+      syncLockedMenuDropdownHeight();
+    });
   }
+  window.addEventListener('scroll',function(){
+    if(!menuOpen) return;
+    if(!isMenuSearchEditing()) return;
+    syncLockedMenuDropdownHeight();
+  },{passive:true});
   window.addEventListener('orientationchange',function(){
     if(!menuOpen) return;
     if(isMenuSearchEditing()){
