@@ -97,16 +97,7 @@
     -webkit-backdrop-filter:none;
   }
   html.ios-mobile-safari header::before{
-    top:env(safe-area-inset-top);
-    background:
-      linear-gradient(
-        to bottom,
-        var(--header-scrim-top),
-        var(--header-scrim-bottom)
-      ),
-      var(--header-bg);
-    backdrop-filter:blur(12px);
-    -webkit-backdrop-filter:blur(12px);
+    display:none;
   }
   body.menu-open{
     overflow:hidden;
@@ -1001,7 +992,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const isSafariBrowser=/Safari/i.test(ua)&&!/Chrome|CriOS|FxiOS|EdgiOS|OPiOS|OPR|Android/i.test(ua);
   const isFirefoxBrowser=/Firefox/i.test(ua)&&!/FxiOS/i.test(ua);
   const isFirefoxMobileBrowser=/Firefox|FxiOS/i.test(ua)&&(navigator.maxTouchPoints>0||isCoarsePointer);
-  const isMobileSafari=isSafariBrowser&&isIOSLike&&(navigator.maxTouchPoints>0||isCoarsePointer);
+  const isMobileSafari=isSafariBrowser&&isIOSLike;
   document.documentElement.classList.toggle('ios-mobile-safari',isMobileSafari);
   document.documentElement.classList.toggle('firefox-mobile-bottom-cover',isFirefoxMobileBrowser);
   const isChromeMobileBrowser=/Chrome|CriOS/i.test(ua)&&!/EdgA|EdgiOS|OPR|OPiOS|SamsungBrowser|YaBrowser|UCBrowser/i.test(ua)&&(/Android/i.test(ua)||/CriOS/i.test(ua));
