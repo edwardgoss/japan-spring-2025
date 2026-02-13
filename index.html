@@ -1896,10 +1896,16 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   let orientationSettleUntil=0;
   let orientationFinalizeTimer=null;
   let orientationUiTimer=null;
-  let preferredRotationAnchorIndex=-1;
+  let preferredRotationAnchor=null;
   let lastRelayoutViewportWidth=0;
   let rotationAnchorLocked=false;
   let suppressAnchorTrackingScroll=false;
+  const ORIENTATION_SETTLE_MS=isSafariBrowser?640:420;
+  const ORIENTATION_FINALIZE_DELAY_MS=isSafariBrowser?560:360;
+  const ORIENTATION_UI_SETTLE_MS=isSafariBrowser?720:520;
+  const USER_SCROLL_INTENT_WINDOW_MS=280;
+  let lastUserScrollIntentAt=0;
+  let userScrolledDuringOrientationSettle=false;
   const viewportMeta=document.querySelector('meta[name="viewport"]');
   let baseViewportMetaContent=viewportMeta?viewportMeta.getAttribute('content')||'':'';
   let chromeViewportCheckTimerA=null;
@@ -1914,6 +1920,32 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     var w=document.documentElement.clientWidth||window.innerWidth;
     return Math.round(w);
   }
+
+  function cloneGalleryAnchor(anchor){
+    if(!anchor||typeof anchor.index!=='number'||anchor.index<0||anchor.index>=items.length){
+      return null;
+    }
+    return{
+      index:anchor.index,
+      offset:Number.isFinite(anchor.offset)?anchor.offset:0
+    };
+  }
+
+  function markUserScrollIntent(){
+    lastUserScrollIntentAt=Date.now();
+  }
+
+  function hasRecentUserScrollIntent(nowTs){
+    return (nowTs-lastUserScrollIntentAt)<=USER_SCROLL_INTENT_WINDOW_MS;
+  }
+
+  function shouldSkipForcedOrientationAnchor(){
+    return Date.now()<orientationSettleUntil&&userScrolledDuringOrientationSettle;
+  }
+
+  window.addEventListener('touchstart',markUserScrollIntent,{passive:true});
+  window.addEventListener('pointerdown',markUserScrollIntent,{passive:true});
+  window.addEventListener('wheel',markUserScrollIntent,{passive:true});
 
   function viewportContentWithoutScaleLocks(content){
     return content.split(',').map(function(part){
@@ -1958,8 +1990,11 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   }
 
   function applyChromeNoZoomViewport(){
-    if(!isChromeMobileBrowser||!viewportMeta) return;
-    viewportMeta.setAttribute('content',buildChromeNoZoomViewportContent());
+    if(!isChromeMobileBrowser||!viewportMeta) return false;
+    var noZoomContent=buildChromeNoZoomViewportContent();
+    if(viewportMeta.getAttribute('content')===noZoomContent) return false;
+    viewportMeta.setAttribute('content',noZoomContent);
+    return true;
   }
 
   function resetHorizontalViewportOffset(){
@@ -1997,8 +2032,18 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   function healChromeViewportIfNeeded(force){
     if(!isChromeMobileBrowser) return;
     if(isLightboxPinchZoomActive()) return;
-    if(!force&&!isChromeViewportUnhealthy()) return;
-    applyChromeNoZoomViewport();
+    var unhealthy=isChromeViewportUnhealthy();
+    if(!force&&!unhealthy) return;
+    var viewportUpdated=applyChromeNoZoomViewport();
+    if(!unhealthy){
+      // Avoid no-op force passes from interrupting touch scroll inertia.
+      if(!viewportUpdated) return;
+      return;
+    }
+    if(hasRecentUserScrollIntent(Date.now())){
+      scheduleChromeViewportHealthCheck(170,false);
+      return;
+    }
     resetHorizontalViewportOffset();
     requestAnimationFrame(resetHorizontalViewportOffset);
   }
@@ -2047,7 +2092,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
   function updatePreferredRotationAnchor(){
     var anchor=captureGalleryScrollAnchor(true);
-    if(anchor) preferredRotationAnchorIndex=anchor.index;
+    if(anchor) preferredRotationAnchor=cloneGalleryAnchor(anchor);
   }
 
   function withSuppressedAnchorTracking(fn){
@@ -2094,23 +2139,28 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       withSuppressedAnchorTracking(function(){
         restoreGalleryScrollAnchor(anchor);
       });
-      preferredRotationAnchorIndex=anchor.index;
+      preferredRotationAnchor=cloneGalleryAnchor(anchor);
     }
     updateNowShowing();
   }
 
-  function scheduleAnchoredRelayout(delay,forcedAnchorIndex){
-    var anchor=null;
-    if(typeof forcedAnchorIndex==='number'&&forcedAnchorIndex>=0&&forcedAnchorIndex<items.length){
-      anchor={index:forcedAnchorIndex,offset:0};
-    }else{
-      anchor=captureGalleryScrollAnchor(false);
-    }
+  function scheduleAnchoredRelayout(delay,forcedAnchor){
+    var forced=cloneGalleryAnchor(forcedAnchor);
+    var anchor=forced||captureGalleryScrollAnchor(false);
     var baselineScrollY=window.scrollY||0;
     function runAnchoredRelayout(){
       // If the user started scrolling before the delayed relayout runs,
       // do not restore an older anchor position.
       if(Math.abs((window.scrollY||0)-baselineScrollY)>2){
+        if(forced&&!shouldSkipForcedOrientationAnchor()){
+          applyAnchoredRelayout(forced);
+          return;
+        }
+        layout();
+        updateNowShowing();
+        return;
+      }
+      if(forced&&shouldSkipForcedOrientationAnchor()){
         layout();
         updateNowShowing();
         return;
@@ -2128,16 +2178,21 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     clearTimeout(orientationFinalizeTimer);
     orientationFinalizeTimer=setTimeout(function(){
       if(lightbox.classList.contains('active')) return;
-      scheduleAnchoredRelayout(0,preferredRotationAnchorIndex);
+      if(shouldSkipForcedOrientationAnchor()){
+        layout();
+        updateNowShowing();
+      }else{
+        scheduleAnchoredRelayout(0,preferredRotationAnchor);
+      }
       document.documentElement.classList.remove('orientation-settling');
-    },360);
+    },ORIENTATION_FINALIZE_DELAY_MS);
   }
   function startOrientationUiSettle(){
     document.documentElement.classList.add('orientation-settling');
     clearTimeout(orientationUiTimer);
     orientationUiTimer=setTimeout(function(){
       document.documentElement.classList.remove('orientation-settling');
-    },520);
+    },ORIENTATION_UI_SETTLE_MS);
   }
 
   lastRelayoutViewportWidth=getLayoutViewportWidth();
@@ -2158,24 +2213,25 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     if(!shouldRunResizeRelayout(inOrientationSettle)) return;
     // During orientation settle, coalesce resize bursts into one anchored relayout.
     var delay=inOrientationSettle?80:100;
-    var forced=Date.now()<orientationSettleUntil?preferredRotationAnchorIndex:null;
+    var forced=inOrientationSettle?preferredRotationAnchor:null;
     scheduleAnchoredRelayout(delay,forced);
     if(inOrientationSettle) scheduleOrientationFinalize();
   });
   window.addEventListener('orientationchange',function(){
     scheduleChromeOrientationZoomGuard();
-    orientationSettleUntil=Date.now()+420;
+    orientationSettleUntil=Date.now()+ORIENTATION_SETTLE_MS;
+    userScrolledDuringOrientationSettle=false;
     lastRelayoutViewportWidth=getLayoutViewportWidth();
     startOrientationUiSettle();
     if(lightbox.classList.contains('active')){
       pendingLayoutAfterLightbox=true;
       return;
     }
-    if(preferredRotationAnchorIndex<0||!rotationAnchorLocked){
+    if(!preferredRotationAnchor||!rotationAnchorLocked){
       updatePreferredRotationAnchor();
     }
     rotationAnchorLocked=true;
-    scheduleAnchoredRelayout(0,preferredRotationAnchorIndex);
+    scheduleAnchoredRelayout(0,preferredRotationAnchor);
     scheduleOrientationFinalize();
   });
 
@@ -2204,6 +2260,10 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       scrollTicking=true;
       requestAnimationFrame(function(){
         var now=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
+        var nowTs=Date.now();
+        if(nowTs<orientationSettleUntil&&hasRecentUserScrollIntent(nowTs)){
+          userScrolledDuringOrientationSettle=true;
+        }
         if(!suppressAnchorTrackingScroll&&!lightbox.classList.contains('active')){
           rotationAnchorLocked=false;
         }
