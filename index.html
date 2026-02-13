@@ -2007,7 +2007,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const USER_SCROLL_INTENT_WINDOW_MS=280;
   const SCROLL_ACTIVITY_WINDOW_MS=520;
   const CHROME_MID_SCROLL_WINDOW_MS=700;
-  const RECENT_SCROLL_ANCHOR_MAX_AGE_MS=isCoarsePointer?320:900;
+  const RECENT_SCROLL_ANCHOR_MAX_AGE_MS=isCoarsePointer?(isIPadLike?900:320):900;
   let lastUserScrollIntentAt=0;
   let lastScrollEventAt=0;
   let orientationChangeStartedAt=0;
@@ -2071,7 +2071,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     var ageMs=nowTs-latestScrollAnchorAt;
     var maxAgeMs=RECENT_SCROLL_ANCHOR_MAX_AGE_MS;
     if(isScrollRecentlyActive(nowTs)||hasRecentUserScrollIntent(nowTs)){
-      maxAgeMs=Math.min(maxAgeMs,220);
+      maxAgeMs=Math.min(maxAgeMs,isIPadLike?760:220);
     }
     return ageMs<=maxAgeMs;
   }
@@ -2509,12 +2509,14 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       userScrolledDuringOrientationSettle=true;
     }
     var inOrientationSettle=nowTs<orientationSettleUntil;
-    if(
+    var shouldPreOrientationForceAnchor=
       !inOrientationSettle&&
-      !useSafariLikeOrientationAnchoring&&
-      useEarlyPhoneOrientationAnchor&&
-      widthDelta>120
-    ){
+      widthDelta>120&&
+      (
+        (!useSafariLikeOrientationAnchoring&&useEarlyPhoneOrientationAnchor)||
+        (isIPadLike&&(isScrollRecentlyActive(nowTs)||hasRecentUserScrollIntent(nowTs)))
+      );
+    if(shouldPreOrientationForceAnchor){
       var preOrientationAnchor=captureGalleryScrollAnchor(true);
       if(
         !preOrientationAnchor&&
