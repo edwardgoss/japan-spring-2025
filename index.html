@@ -1591,9 +1591,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     if(!menuPositionLockedForEditing) return;
     var vm=getMenuViewportMetrics();
     if(vm.height<=0) return;
-    var top=Math.max(0,Math.round(menuLockedVisualTop+vm.top));
-    var maxH=Math.max(120,Math.round(vm.height-menuLockedVisualTop-8));
-    menuDropdown.style.top=top+'px';
+    var visualBottom=vm.top+vm.height;
+    var maxH=Math.max(120,Math.round(visualBottom-menuLockedVisualTop-8));
+    menuDropdown.style.top=menuLockedVisualTop+'px';
     menuDropdown.style.right=menuLockedRight+'px';
     menuDropdown.style.maxHeight=maxH+'px';
   }
