@@ -2485,10 +2485,32 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       return;
     }
     var nowTs=Date.now();
+    var viewportWNow=getLayoutViewportWidth();
+    var widthDelta=Math.abs(viewportWNow-lastRelayoutViewportWidth);
     if(hasUserScrollIntentSinceOrientation(nowTs)){
       userScrolledDuringOrientationSettle=true;
     }
     var inOrientationSettle=nowTs<orientationSettleUntil;
+    if(
+      !inOrientationSettle&&
+      !isSafariBrowser&&
+      useEarlyPhoneOrientationAnchor&&
+      widthDelta>120
+    ){
+      var preOrientationAnchor=latestScrollAnchor?cloneGalleryAnchor(latestScrollAnchor):captureGalleryScrollAnchor(true);
+      if(preOrientationAnchor){
+        traceLog('resize_pre_orientation_force_anchor',{
+          widthDelta:traceRound(widthDelta),
+          anchorIndex:preOrientationAnchor.index,
+          anchorOffset:traceRound(preOrientationAnchor.offset)
+        });
+        preferredRotationAnchor=cloneGalleryAnchor(preOrientationAnchor);
+        orientationSettleUntil=nowTs+ORIENTATION_SETTLE_MS;
+        scheduleAnchoredRelayout(0,preOrientationAnchor);
+        scheduleOrientationFinalize();
+        return;
+      }
+    }
     if(!shouldRunResizeRelayout(inOrientationSettle)) return;
     if(inOrientationSettle&&(!useCustomOrientationAnchoring||userScrolledDuringOrientationSettle)){
       // Mid-scroll rotations should not force-anchor to older geometry snapshots.
