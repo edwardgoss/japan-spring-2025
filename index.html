@@ -1909,12 +1909,13 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   let rotationAnchorLocked=false;
   let suppressAnchorTrackingScroll=false;
   const useCustomOrientationAnchoring=true;
-  // Safari has its own dedicated early-anchor path; all other touch browsers
-  // share the same orientation stabilization flow (phones + tablets).
-  const useEarlyPhoneOrientationAnchor=isCoarsePointer&&!isSafariBrowser;
-  const ORIENTATION_SETTLE_MS=isSafariBrowser?640:420;
-  const ORIENTATION_FINALIZE_DELAY_MS=isSafariBrowser?560:360;
-  const ORIENTATION_UI_SETTLE_MS=isSafariBrowser?720:520;
+  // iPad Chromium/Firefox run on WebKit and tend to follow Safari's rotation timing.
+  // Treat all iPad browsers like Safari for orientation anchoring.
+  const useSafariLikeOrientationAnchoring=isSafariBrowser||isIPadLike;
+  const useEarlyPhoneOrientationAnchor=isCoarsePointer&&!useSafariLikeOrientationAnchoring;
+  const ORIENTATION_SETTLE_MS=useSafariLikeOrientationAnchoring?640:420;
+  const ORIENTATION_FINALIZE_DELAY_MS=useSafariLikeOrientationAnchoring?560:360;
+  const ORIENTATION_UI_SETTLE_MS=useSafariLikeOrientationAnchoring?720:520;
   const USER_SCROLL_INTENT_WINDOW_MS=280;
   const SCROLL_ACTIVITY_WINDOW_MS=520;
   const CHROME_MID_SCROLL_WINDOW_MS=700;
@@ -2303,18 +2304,18 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
         finalizeBranch='skip_forced_anchor';
         layout();
         updateNowShowing();
-      }else if(!isSafariBrowser&&chromeMidScrollRotation){
+      }else if(!useSafariLikeOrientationAnchoring&&chromeMidScrollRotation){
         // For Chrome mid-scroll rotations, avoid a late second forced anchor
         // that can interrupt resumed scrolling after the initial settle pass.
         finalizeBranch='chrome_mid_scroll_layout_only';
         layout();
         updateNowShowing();
-      }else if(!isSafariBrowser&&phoneOrientationAnchorApplied){
+      }else if(!useSafariLikeOrientationAnchoring&&phoneOrientationAnchorApplied){
         // Phone browsers that received an early anchor pass should not re-snap.
         finalizeBranch='phone_early_anchor_already_applied';
         layout();
         updateNowShowing();
-      }else if(isSafariBrowser&&safariOrientationAnchorApplied){
+      }else if(useSafariLikeOrientationAnchoring&&safariOrientationAnchorApplied){
         // Safari already received an anchored pass during settle; avoid re-snapping.
         finalizeBranch='safari_early_anchor_already_applied';
         layout();
@@ -2361,7 +2362,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   }
 
   function scheduleSafariEarlyOrientationAnchor(){
-    if(!isSafariBrowser||!preferredRotationAnchor) return;
+    if(!useSafariLikeOrientationAnchoring||!preferredRotationAnchor) return;
     var token=++safariEarlyAnchorToken;
     if(TRACE_ENABLED)traceLog('schedule_safari_early_anchor',{
       token:token,
@@ -2385,7 +2386,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   }
 
   function schedulePhoneEarlyOrientationAnchor(){
-    if(isSafariBrowser||!useEarlyPhoneOrientationAnchor||!preferredRotationAnchor) return;
+    if(useSafariLikeOrientationAnchoring||!useEarlyPhoneOrientationAnchor||!preferredRotationAnchor) return;
     var token=++phoneEarlyAnchorToken;
     if(TRACE_ENABLED)traceLog('schedule_phone_early_anchor',{
       token:token,
@@ -2422,7 +2423,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     var inOrientationSettle=nowTs<orientationSettleUntil;
     if(
       !inOrientationSettle&&
-      !isSafariBrowser&&
+      !useSafariLikeOrientationAnchoring&&
       useEarlyPhoneOrientationAnchor&&
       widthDelta>120
     ){
@@ -2459,7 +2460,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       scheduleOrientationFinalize();
       return;
     }
-    if(inOrientationSettle&&!isSafariBrowser){
+    if(inOrientationSettle&&!useSafariLikeOrientationAnchoring){
       if(useEarlyPhoneOrientationAnchor){
         if(!phoneOrientationAnchorApplied&&preferredRotationAnchor&&!shouldSkipForcedOrientationAnchor()){
           if(TRACE_ENABLED)traceLog('resize_in_settle_apply_phone_anchor',{
@@ -2484,7 +2485,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       scheduleOrientationFinalize();
       return;
     }
-    if(inOrientationSettle&&isSafariBrowser){
+    if(inOrientationSettle&&useSafariLikeOrientationAnchoring){
       if(!safariOrientationAnchorApplied&&preferredRotationAnchor&&!shouldSkipForcedOrientationAnchor()){
         if(TRACE_ENABLED)traceLog('resize_in_settle_apply_safari_anchor',{
           preferredIndex:preferredRotationAnchor.index
@@ -2551,7 +2552,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     });
     rotationAnchorLocked=true;
     if(!userScrolledDuringOrientationSettle){
-      if(isSafariBrowser){
+      if(useSafariLikeOrientationAnchoring){
         scheduleSafariEarlyOrientationAnchor();
       }else if(useEarlyPhoneOrientationAnchor){
         schedulePhoneEarlyOrientationAnchor();
