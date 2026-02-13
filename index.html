@@ -81,6 +81,11 @@
   }
   body.menu-open{
     overflow:hidden;
+    position:fixed;
+    left:0;
+    right:0;
+    width:100%;
+    top:calc(-1 * var(--menu-lock-scroll,0px));
   }
 
   /* ── Header ── */
@@ -1523,6 +1528,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   let menuOpen=false;
   let phoneMenuMode=false;
   let menuOpenedAt=0;
+  let menuLockedScrollY=0;
 
   // ── Build hamburger menu ──
   // Search input
@@ -1673,6 +1679,18 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     menuDropdown.style.removeProperty('bottom');
     menuDropdown.style.removeProperty('max-height');
   }
+  function lockPageScrollForPhoneMenu(){
+    if(document.body.classList.contains('menu-open')) return;
+    menuLockedScrollY=window.scrollY||window.pageYOffset||0;
+    document.documentElement.style.setProperty('--menu-lock-scroll',menuLockedScrollY+'px');
+    document.body.classList.add('menu-open');
+  }
+  function unlockPageScrollForPhoneMenu(){
+    if(!document.body.classList.contains('menu-open')) return;
+    document.body.classList.remove('menu-open');
+    document.documentElement.style.removeProperty('--menu-lock-scroll');
+    window.scrollTo({left:0,top:menuLockedScrollY,behavior:'instant'});
+  }
   function getMenuViewportMetrics(){
     if(window.visualViewport){
       return{
@@ -1700,7 +1718,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     var next=computePhoneMenuMode();
     if(next===phoneMenuMode&&document.documentElement.classList.contains('phone-menu-mode')===next){
       if(menuOpen){
-        document.body.classList.toggle('menu-open',phoneMenuMode);
+        if(phoneMenuMode) lockPageScrollForPhoneMenu();
+        else unlockPageScrollForPhoneMenu();
       }
       return;
     }
@@ -1708,7 +1727,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     document.documentElement.classList.toggle('phone-menu-mode',phoneMenuMode);
     updateClearAllBtn();
     if(menuOpen){
-      document.body.classList.toggle('menu-open',phoneMenuMode);
+      if(phoneMenuMode) lockPageScrollForPhoneMenu();
+      else unlockPageScrollForPhoneMenu();
     }
     if(menuOpen){
       if(phoneMenuMode){
@@ -1778,7 +1798,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   function closeMenu(){
     menuOpen=false;
     menuPositionRafPending=false;
-    document.body.classList.remove('menu-open');
+    unlockPageScrollForPhoneMenu();
     resetMenuDropdownPositionStyles();
     menuDropdown.classList.remove('open');
     menuOverlay.classList.remove('open');
