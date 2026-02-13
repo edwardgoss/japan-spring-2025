@@ -87,6 +87,27 @@
     /* Let photos render beneath Safari's floating address bar region. */
     padding-top:0;
   }
+  html.ios-mobile-safari .gallery{
+    background:transparent;
+    padding-top:0;
+  }
+  html.ios-mobile-safari header{
+    background:transparent;
+    backdrop-filter:none;
+    -webkit-backdrop-filter:none;
+  }
+  html.ios-mobile-safari header::before{
+    top:env(safe-area-inset-top);
+    background:
+      linear-gradient(
+        to bottom,
+        var(--header-scrim-top),
+        var(--header-scrim-bottom)
+      ),
+      var(--header-bg);
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
+  }
   body.menu-open{
     overflow:hidden;
     position:fixed;
