@@ -374,8 +374,10 @@
   .gallery-item.revealed img{
     opacity:1;
   }
-  .gallery-item:hover img{
-    transform:scale(1.03);
+  @media (hover: hover) and (pointer: fine){
+    .gallery-item:hover img{
+      transform:scale(1.03);
+    }
   }
 
   /* ── Lightbox ── */
@@ -2262,18 +2264,71 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   },{passive:true});
 
   // ── Lightbox ──
-  gallery.addEventListener('click',function(e){
-    const item=e.target.closest('.gallery-item');
-    if(!item||item.classList.contains('filtered-out'))return;
+  function openLightboxFromGalleryItem(item){
+    if(!item||item.classList.contains('filtered-out')) return false;
     const idx=parseInt(item.dataset.index,10);
+    if(!Number.isFinite(idx)) return false;
     current=filtered.indexOf(idx);
-    if(current===-1)return;
+    if(current===-1) return false;
     lightboxOpenCurrent=current;
     lightboxOpenWidth=document.documentElement.clientWidth;
     lightboxOpenScrollY=window.scrollY||0;
     lightboxRotatedWhileOpen=false;
     openLightbox();
+    return true;
+  }
+
+  let suppressNextGalleryClickUntil=0;
+  gallery.addEventListener('click',function(e){
+    if(Date.now()<suppressNextGalleryClickUntil) return;
+    const item=e.target.closest('.gallery-item');
+    openLightboxFromGalleryItem(item);
   });
+
+  // Chrome mobile occasionally swallows the first post-load tap as a hover-like state.
+  if(isChromeMobileBrowser){
+    let tapCandidateItem=null;
+    let tapStartX=0;
+    let tapStartY=0;
+    let tapMoved=false;
+    const TAP_MOVE_THRESHOLD=12;
+
+    function clearTapCandidate(){
+      tapCandidateItem=null;
+      tapMoved=false;
+    }
+
+    gallery.addEventListener('touchstart',function(e){
+      if(e.touches.length!==1) return;
+      var item=e.target.closest('.gallery-item');
+      if(!item||item.classList.contains('filtered-out')) return;
+      tapCandidateItem=item;
+      tapMoved=false;
+      tapStartX=e.touches[0].clientX;
+      tapStartY=e.touches[0].clientY;
+    },{passive:true});
+
+    gallery.addEventListener('touchmove',function(e){
+      if(!tapCandidateItem||!e.touches.length) return;
+      var dx=Math.abs(e.touches[0].clientX-tapStartX);
+      var dy=Math.abs(e.touches[0].clientY-tapStartY);
+      if(dx>TAP_MOVE_THRESHOLD||dy>TAP_MOVE_THRESHOLD) tapMoved=true;
+    },{passive:true});
+
+    gallery.addEventListener('touchend',function(){
+      if(!tapCandidateItem) return;
+      var item=tapCandidateItem;
+      var moved=tapMoved;
+      clearTapCandidate();
+      if(moved) return;
+      if(openLightboxFromGalleryItem(item)){
+        suppressNextGalleryClickUntil=Date.now()+700;
+      }
+    },{passive:true});
+
+    gallery.addEventListener('touchcancel',clearTapCandidate,{passive:true});
+  }
+
   function photoSrc(idx){
     return 'full_photos/Japan_Spring-2025_'+String(idx+1).padStart(3,'0')+'.webp';
   }
