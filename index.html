@@ -118,6 +118,10 @@
     backdrop-filter:none;
     -webkit-backdrop-filter:none;
   }
+  html.phone-menu-mode.menu-active header{
+    backdrop-filter:none;
+    -webkit-backdrop-filter:none;
+  }
   header::before{
     content:"";
     position:absolute;
@@ -129,6 +133,9 @@
       var(--header-scrim-top),
       var(--header-scrim-bottom)
     );
+  }
+  html.phone-menu-mode.menu-active header::before{
+    display:none;
   }
   .header-top,.now-showing,.menu-dropdown{
     position:relative;
@@ -784,6 +791,15 @@
     -webkit-overflow-scrolling:touch;
     transition:none;
     transform:none;
+  }
+  html.ios-mobile-safari.phone-menu-mode .menu-overlay{
+    /* iOS Safari 26 compositor: avoid blur path that can lock toolbar to solid fill. */
+    backdrop-filter:none;
+    -webkit-backdrop-filter:none;
+    background:rgba(0,0,0,.34);
+  }
+  html.ios-mobile-safari.phone-menu-mode .menu-dropdown{
+    -webkit-overflow-scrolling:auto;
   }
   html.phone-menu-mode .menu-dropdown.open{
     display:block;
@@ -1974,6 +1990,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     cancelPendingMenuOpen();
     deferClearAllRevealUntilMenuClose=false;
     menuOpen=true;
+    document.documentElement.classList.add('menu-active');
     menuOpenedAt=Date.now();
     syncPhoneMenuMode();
     updateClearAllBtn();
@@ -1998,6 +2015,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     }
     deferClearAllRevealUntilMenuClose=false;
     menuOpen=false;
+    document.documentElement.classList.remove('menu-active');
     menuPositionRafPending=false;
     unlockPageScrollForPhoneMenu();
     resetMenuDropdownPositionStyles();
@@ -2072,6 +2090,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     setTimeout(scheduleMenuDropdownPosition,80);
   });
   syncPhoneMenuMode();
+  document.documentElement.classList.remove('menu-active');
 
   // Header title: scroll to top (does not interfere with hamburger button)
   var titleTap=document.getElementById('titleTap');
