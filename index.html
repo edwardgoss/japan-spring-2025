@@ -781,14 +781,14 @@
     border-bottom:1px solid var(--menu-border);
   }
   html.phone-menu-mode .menu-search input{
-    padding:11px 56px 11px 14px;
+    padding:9px 56px 9px 14px;
     border-radius:10px;
-    font-size:18px;
+    font-size:16px;
     transition:none;
   }
   html.phone-menu-mode .menu-search-clear{
     right:22px;
-    top:calc(var(--menu-search-top) + 24px);
+    top:calc(var(--menu-search-top) + 18px);
     transform:translateY(-50%);
     font-size:1.2rem;
     padding:8px 10px;
@@ -1562,7 +1562,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   searchWrap.className='menu-search';
   const searchInput=document.createElement('input');
   searchInput.type='search';
-  searchInput.placeholder='Search locations\u2026';
+  searchInput.placeholder='Search...';
   searchInput.setAttribute('aria-label','Search photos by location');
   searchInput.setAttribute('enterkeyhint','search');
   searchInput.setAttribute('inputmode','search');
