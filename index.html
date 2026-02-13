@@ -806,9 +806,6 @@
     padding-top:6px;
     opacity:.76;
   }
-  html.phone-menu-mode .menu-divider-top{
-    display:none;
-  }
   html.phone-menu-mode .menu-item{
     padding:12px 18px;
     font-size:.84rem;
@@ -1586,6 +1583,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
   // Clear filter & search (shown only when something is active)
   const clearAllBtn=document.createElement('button');
+  let menuTopDivider=null;
   clearAllBtn.type='button';
   clearAllBtn.className='menu-item menu-clear-all';
   clearAllBtn.textContent='Clear Filter & Search';
@@ -1632,6 +1630,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     var hasSearchValue=normalize(searchInput.value.trim()).length>0;
     const show=(activeFilter!=='All')&&hasSearchValue&&!(deferClearAllRevealUntilMenuClose&&menuOpen);
     clearAllBtn.style.display = show ? '' : 'none';
+    if(menuTopDivider){
+      menuTopDivider.style.display = show ? '' : 'none';
+    }
   }
   updateClearAllBtn();
 
@@ -1674,6 +1675,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     if(i===0){
       const div=document.createElement('div');
       div.className='menu-divider menu-divider-top';
+      menuTopDivider=div;
       menuDropdown.appendChild(div);
     }
     if(i===1){
@@ -1698,6 +1700,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     });
     menuDropdown.appendChild(btn);
   });
+  updateClearAllBtn();
 
   const menuFooterDivider=document.createElement('div');
   menuFooterDivider.className='menu-divider menu-footer-divider';
