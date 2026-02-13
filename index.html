@@ -1904,7 +1904,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const ORIENTATION_FINALIZE_DELAY_MS=isSafariBrowser?560:360;
   const ORIENTATION_UI_SETTLE_MS=isSafariBrowser?720:520;
   const USER_SCROLL_INTENT_WINDOW_MS=280;
-  const SCROLL_ACTIVITY_WINDOW_MS=220;
+  const SCROLL_ACTIVITY_WINDOW_MS=520;
   let lastUserScrollIntentAt=0;
   let lastScrollEventAt=0;
   let userScrolledDuringOrientationSettle=false;
@@ -2040,13 +2040,18 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     if(isLightboxPinchZoomActive()) return;
     var unhealthy=isChromeViewportUnhealthy();
     if(!force&&!unhealthy) return;
+    var nowTs=Date.now();
     var viewportUpdated=applyChromeNoZoomViewport();
     if(!unhealthy){
       // Avoid no-op force passes from interrupting touch scroll inertia.
       if(!viewportUpdated) return;
       return;
     }
-    if(hasRecentUserScrollIntent(Date.now())){
+    if(
+      hasRecentUserScrollIntent(nowTs)||
+      isScrollRecentlyActive(nowTs)||
+      (nowTs<orientationSettleUntil&&userScrolledDuringOrientationSettle)
+    ){
       scheduleChromeViewportHealthCheck(170,false);
       return;
     }
@@ -2221,7 +2226,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     var inOrientationSettle=Date.now()<orientationSettleUntil;
     if(!shouldRunResizeRelayout(inOrientationSettle)) return;
     if(inOrientationSettle&&isSafariBrowser){
-      // Safari often reports unstable geometry during rotation; defer to one final pass.
+      // Keep Safari on the new column geometry immediately; reserve anchor correction for finalize.
+      layout();
+      updateNowShowing();
       scheduleOrientationFinalize();
       return;
     }
@@ -2282,8 +2289,10 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
         var now=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
         var nowTs=Date.now();
         lastScrollEventAt=nowTs;
-        if(nowTs<orientationSettleUntil&&hasRecentUserScrollIntent(nowTs)){
-          userScrolledDuringOrientationSettle=true;
+        if(nowTs<orientationSettleUntil){
+          if(!isSafariBrowser||hasRecentUserScrollIntent(nowTs)){
+            userScrolledDuringOrientationSettle=true;
+          }
         }
         if(!suppressAnchorTrackingScroll&&!lightbox.classList.contains('active')){
           rotationAnchorLocked=false;
