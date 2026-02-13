@@ -428,9 +428,12 @@
     position:fixed;
     left:0;right:0;bottom:0;
     height:var(--lightbox-bottom-cover);
-    background:var(--lightbox-bg);
+    background:transparent;
     pointer-events:none;
     z-index:109;
+  }
+  html.firefox-mobile-bottom-cover .lightbox.active::after{
+    background:var(--lightbox-bg);
   }
   .lightbox img{
     grid-row:1;
@@ -968,6 +971,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const isSafariBrowser=/Safari/i.test(ua)&&!/Chrome|CriOS|FxiOS|EdgiOS|OPiOS|OPR|Android/i.test(ua);
   const isFirefoxBrowser=/Firefox/i.test(ua)&&!/FxiOS/i.test(ua);
   const isFirefoxMobileBrowser=/Firefox|FxiOS/i.test(ua)&&(navigator.maxTouchPoints>0||window.matchMedia('(hover:none) and (pointer:coarse)').matches);
+  document.documentElement.classList.toggle('firefox-mobile-bottom-cover',isFirefoxMobileBrowser);
   const isChromeMobileBrowser=/Chrome|CriOS/i.test(ua)&&!/EdgA|EdgiOS|OPR|OPiOS|SamsungBrowser|YaBrowser|UCBrowser/i.test(ua)&&(/Android/i.test(ua)||/CriOS/i.test(ua));
   const INITIAL_EAGER = isIOSLike
     ? (isIPadLike?8:9)
