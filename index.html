@@ -313,9 +313,6 @@
     padding:3px 2px 0;
     letter-spacing:.01em;
   }
-  .menu-search-apply{
-    display:none;
-  }
 
   .no-results{
     text-align:center;
@@ -788,20 +785,6 @@
     font-size:.64rem;
     padding-top:6px;
     opacity:.76;
-  }
-  html.phone-menu-mode .menu-search-apply{
-    display:block;
-    width:100%;
-    margin-top:8px;
-    border:1px solid var(--menu-input-border);
-    border-radius:8px;
-    background:var(--menu-input-bg);
-    color:var(--menu-input-text);
-    padding:9px 12px;
-    font-family:'Libre Baskerville',Georgia,'Times New Roman',serif;
-    font-size:.9rem;
-    letter-spacing:.02em;
-    cursor:pointer;
   }
   html.phone-menu-mode .menu-item{
     padding:12px 18px;
@@ -1555,15 +1538,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   searchClear.type='button';
   searchClear.innerHTML='&times;';
   searchClear.setAttribute('aria-label','Clear search');
-  const searchApply=document.createElement('button');
-  searchApply.className='menu-search-apply';
-  searchApply.type='button';
-  searchApply.setAttribute('aria-label','Apply search');
-  searchApply.textContent='Search';
   searchWrap.appendChild(searchInput);
   searchWrap.appendChild(searchClear);
   searchWrap.appendChild(searchHint);
-  searchWrap.appendChild(searchApply);
   menuDropdown.appendChild(searchWrap);
 
   // Clear filter & search (shown only when something is active)
@@ -1648,14 +1625,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     }
     applySearchFromInput();
   });
-  searchApply.addEventListener('click',function(e){
-    if(isMenuGhostTap()) return;
-    e.stopPropagation();
-    applySearchFromInput();
-    closeMenu();
-    searchInput.blur();
-  });
-
   // Filter items
   const allCities=['All',...cityOrder];
   allCities.forEach(function(city,i){
@@ -2093,6 +2062,10 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   function updateNowShowing(){
     if (activeFilter !== 'All') {
       requestNowShowing(activeFilter);
+      return;
+    }
+    if(activeSearch&&filtered.length===0){
+      requestNowShowing('No matches');
       return;
     }
     // In "All" mode, detect from scroll position
