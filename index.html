@@ -1906,7 +1906,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const ORIENTATION_UI_SETTLE_MS=isSafariBrowser?720:520;
   const USER_SCROLL_INTENT_WINDOW_MS=280;
   const SCROLL_ACTIVITY_WINDOW_MS=520;
-  const CHROME_MID_SCROLL_WINDOW_MS=180;
+  const CHROME_MID_SCROLL_WINDOW_MS=700;
   let lastUserScrollIntentAt=0;
   let lastScrollEventAt=0;
   let orientationChangeStartedAt=0;
@@ -2307,9 +2307,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     safariOrientationAnchorApplied=false;
     safariEarlyAnchorToken++;
     chromeMidScrollRotation=isChromeMidScrollAtOrientation(nowTs);
-    if(chromeMidScrollRotation){
-      userScrolledDuringOrientationSettle=true;
-    }
     lastRelayoutViewportWidth=getLayoutViewportWidth();
     startOrientationUiSettle();
     if(lightbox.classList.contains('active')){
@@ -2324,7 +2321,12 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       }else{
         scheduleAnchoredRelayout(0,preferredRotationAnchor);
       }
-      scheduleChromeOrientationZoomGuard();
+      if(chromeMidScrollRotation){
+        // Preserve gallery anchor first; run Chrome viewport health pass after settle.
+        scheduleChromeViewportHealthCheck(ORIENTATION_SETTLE_MS+120,false);
+      }else{
+        scheduleChromeOrientationZoomGuard();
+      }
     }else{
       // Keep Chrome viewport healing away from active rotation scrolling.
       scheduleChromeViewportHealthCheck(ORIENTATION_SETTLE_MS+120,false);
