@@ -1601,6 +1601,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   let phoneMenuMode=false;
   let menuOpenedAt=0;
   let menuOpenTimer=null;
+  let iosPhoneMenuScrollGuardEnabled=false;
+  let iosPhoneMenuTouchY=0;
   let menuLockedScrollY=0;
   let menuUnlockScrollYOverride=null;
   let deferClearAllRevealUntilMenuClose=false;
@@ -1774,23 +1776,92 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       menuOpenTimer=null;
     }
   }
+  function isIosPhoneMenuScrollGuardActive(){
+    return !!(isMobileSafari&&menuOpen&&phoneMenuMode);
+  }
+  function iosPhoneMenuTouchStart(e){
+    if(!isIosPhoneMenuScrollGuardActive()) return;
+    if(!e.touches||!e.touches.length) return;
+    iosPhoneMenuTouchY=e.touches[0].clientY;
+  }
+  function iosPhoneMenuTouchMove(e){
+    if(!isIosPhoneMenuScrollGuardActive()) return;
+    if(!e.touches||!e.touches.length) return;
+    if(!menuDropdown.contains(e.target)){
+      e.preventDefault();
+      return;
+    }
+    var currentY=e.touches[0].clientY;
+    var deltaY=currentY-iosPhoneMenuTouchY;
+    iosPhoneMenuTouchY=currentY;
+    var maxScroll=Math.max(0,menuDropdown.scrollHeight-menuDropdown.clientHeight);
+    if(maxScroll<=0){
+      e.preventDefault();
+      return;
+    }
+    var atTop=menuDropdown.scrollTop<=0;
+    var atBottom=menuDropdown.scrollTop>=maxScroll-1;
+    if((atTop&&deltaY>0)||(atBottom&&deltaY<0)){
+      e.preventDefault();
+    }
+  }
+  function iosPhoneMenuWheel(e){
+    if(!isIosPhoneMenuScrollGuardActive()) return;
+    if(!menuDropdown.contains(e.target)){
+      e.preventDefault();
+      return;
+    }
+    var maxScroll=Math.max(0,menuDropdown.scrollHeight-menuDropdown.clientHeight);
+    if(maxScroll<=0){
+      e.preventDefault();
+      return;
+    }
+    var deltaY=e.deltaY||0;
+    var atTop=menuDropdown.scrollTop<=0;
+    var atBottom=menuDropdown.scrollTop>=maxScroll-1;
+    if((atTop&&deltaY<0)||(atBottom&&deltaY>0)){
+      e.preventDefault();
+    }
+  }
+  function enableIosPhoneMenuScrollGuard(){
+    if(iosPhoneMenuScrollGuardEnabled) return;
+    iosPhoneMenuScrollGuardEnabled=true;
+    document.addEventListener('touchstart',iosPhoneMenuTouchStart,{passive:true,capture:true});
+    document.addEventListener('touchmove',iosPhoneMenuTouchMove,{passive:false,capture:true});
+    document.addEventListener('wheel',iosPhoneMenuWheel,{passive:false,capture:true});
+  }
+  function disableIosPhoneMenuScrollGuard(){
+    if(!iosPhoneMenuScrollGuardEnabled) return;
+    iosPhoneMenuScrollGuardEnabled=false;
+    document.removeEventListener('touchstart',iosPhoneMenuTouchStart,true);
+    document.removeEventListener('touchmove',iosPhoneMenuTouchMove,true);
+    document.removeEventListener('wheel',iosPhoneMenuWheel,true);
+  }
   function lockPageScrollForPhoneMenu(){
+    if(isMobileSafari){
+      menuLockedScrollY=window.scrollY||window.pageYOffset||0;
+      menuUnlockScrollYOverride=null;
+      disableIosPhoneMenuScrollGuard();
+      enableIosPhoneMenuScrollGuard();
+      return;
+    }
     if(document.body.classList.contains('menu-open')) return;
     menuLockedScrollY=window.scrollY||window.pageYOffset||0;
     menuUnlockScrollYOverride=null;
-    if(!isMobileSafari){
-      document.documentElement.style.setProperty('--menu-lock-scroll',menuLockedScrollY+'px');
-    }
+    document.documentElement.style.setProperty('--menu-lock-scroll',menuLockedScrollY+'px');
     document.body.classList.add('menu-open');
   }
   function unlockPageScrollForPhoneMenu(){
-    if(!document.body.classList.contains('menu-open')) return;
-    document.body.classList.remove('menu-open');
-    document.documentElement.style.removeProperty('--menu-lock-scroll');
     if(isMobileSafari){
+      disableIosPhoneMenuScrollGuard();
+      document.body.classList.remove('menu-open');
+      document.documentElement.style.removeProperty('--menu-lock-scroll');
       menuUnlockScrollYOverride=null;
       return;
     }
+    if(!document.body.classList.contains('menu-open')) return;
+    document.body.classList.remove('menu-open');
+    document.documentElement.style.removeProperty('--menu-lock-scroll');
     var restoreY=Number.isFinite(menuUnlockScrollYOverride)?menuUnlockScrollYOverride:menuLockedScrollY;
     menuUnlockScrollYOverride=null;
     window.scrollTo({left:0,top:restoreY,behavior:'instant'});
