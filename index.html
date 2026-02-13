@@ -2959,6 +2959,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
     // Exiting from rotated lightbox: stop gallery orientation settle re-anchors.
     orientationSettleUntil=0;
+    orientationChangeStartedAt=0;
+    userScrolledDuringOrientationSettle=false;
     clearTimeout(orientationFinalizeTimer);
     clearTimeout(orientationUiTimer);
     document.documentElement.classList.remove('orientation-settling');
@@ -2978,8 +2980,18 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     lightboxRotatedWhileOpen=false;
 
     // Re-layout follow-up in case viewport continues settling after close.
-    var allowPostCloseScrollRestore=!(hadRotation&&isSafariBrowser&&isIPadLike);
     pendingLayoutAfterLightbox=false;
+    var skipPostCloseSettle=hadRotation&&isSafariBrowser&&isIPadLike;
+    if(skipPostCloseSettle){
+      // On iPad Safari, delayed post-close relayout timers can snag touch scroll
+      // after rotating in lightbox. Immediate close layout above is sufficient.
+      clearTimeout(resizeTimer);
+      clearTimeout(lightboxSettleTimerA);
+      clearTimeout(lightboxSettleTimerB);
+      updateNowShowing();
+      return;
+    }
+    var allowPostCloseScrollRestore=true;
     scheduleLayoutAfterLightbox({allowScrollRestore:allowPostCloseScrollRestore});
   }
 
