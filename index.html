@@ -1530,12 +1530,14 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   let lastLightboxPreloadBehind=-1;
   let activeFilter='All';
   let activeSearch='';
+  let activeSearchDisplay='';
   const items=[];
   let filtered=[];
   let menuOpen=false;
   let phoneMenuMode=false;
   let menuOpenedAt=0;
   let menuLockedScrollY=0;
+  let menuUnlockScrollYOverride=null;
 
   // ── Build hamburger menu ──
   // Search input
@@ -1572,6 +1574,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     e.stopPropagation();
     activeFilter='All';
     activeSearch='';
+    activeSearchDisplay='';
     // reset UI
     searchInput.value='';
     updateSearchClear();
@@ -1591,7 +1594,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   menuDropdown.appendChild(clearAllBtn);
 
   function applySearchFromInput(options){
-    activeSearch=normalize(searchInput.value.trim());
+    activeSearchDisplay=searchInput.value.trim();
+    activeSearch=normalize(activeSearchDisplay);
     updateSearchClear();
     updateClearAllBtn();
     updateFiltered();
@@ -1689,6 +1693,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   function lockPageScrollForPhoneMenu(){
     if(document.body.classList.contains('menu-open')) return;
     menuLockedScrollY=window.scrollY||window.pageYOffset||0;
+    menuUnlockScrollYOverride=null;
     document.documentElement.style.setProperty('--menu-lock-scroll',menuLockedScrollY+'px');
     document.body.classList.add('menu-open');
   }
@@ -1696,7 +1701,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     if(!document.body.classList.contains('menu-open')) return;
     document.body.classList.remove('menu-open');
     document.documentElement.style.removeProperty('--menu-lock-scroll');
-    window.scrollTo({left:0,top:menuLockedScrollY,behavior:'instant'});
+    var restoreY=Number.isFinite(menuUnlockScrollYOverride)?menuUnlockScrollYOverride:menuLockedScrollY;
+    menuUnlockScrollYOverride=null;
+    window.scrollTo({left:0,top:restoreY,behavior:'instant'});
   }
   function getMenuViewportMetrics(){
     if(window.visualViewport){
@@ -1814,6 +1821,14 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     }
   }
   function closeMenu(){
+    if(phoneMenuMode){
+      var draftNormalized=normalize(searchInput.value.trim());
+      if(draftNormalized!==activeSearch){
+        searchInput.value=activeSearchDisplay;
+        updateSearchClear();
+        updateClearAllBtn();
+      }
+    }
     menuOpen=false;
     menuPositionRafPending=false;
     unlockPageScrollForPhoneMenu();
@@ -1826,6 +1841,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
   function clearSearch(){
     activeSearch='';
+    activeSearchDisplay='';
     searchInput.value='';
     updateSearchClear();
     updateFiltered();
@@ -1933,10 +1949,20 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     var anchor=captureGalleryScrollAnchor(true);
     return anchor?anchor.index:-1;
   }
+  function shouldResetFilterScrollForCurrentContext(){
+    if(phoneMenuMode) return true;
+    if(!menuOpen) return false;
+    var vm=getMenuViewportMetrics();
+    var shortSide=Math.min(vm.width||window.innerWidth||0,vm.height||window.innerHeight||0);
+    return shortSide>0&&shortSide<=600;
+  }
 
   function setFilter(city){
+    var resetToTopOnFilterChange=shouldResetFilterScrollForCurrentContext();
+    menuUnlockScrollYOverride=(phoneMenuMode&&menuOpen&&resetToTopOnFilterChange)?0:null;
     // For non-"All" filters, preserve context by anchoring to top visible photo.
-    var anchorIdx=city==='All' ? -1 : getTopVisibleIndex();
+    // Phone/mobile menu mode intentionally resets to top for clearer filter transitions.
+    var anchorIdx=(city==='All'||resetToTopOnFilterChange) ? -1 : getTopVisibleIndex();
 
     activeFilter=city;
     updateClearAllBtn();
@@ -2037,7 +2063,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     var html='<span class="now-showing-label">Now showing \u00b7 </span><span class="now-showing-city">'+city+'</span>';
     if(activeFilter!=='All') html+=' <span class="now-showing-filtered">\u00b7 Filtered</span>';
     if(activeSearch){
-      var q=searchInput.value.trim();
+      var q=activeSearchDisplay;
       html+=' <span class="now-showing-filtered">\u00b7 Search: <span class="now-showing-query">'+escapeHTML(q)+'</span></span>';
     }
     return html;
