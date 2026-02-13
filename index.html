@@ -1554,6 +1554,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   let menuOpenedAt=0;
   let menuLockedScrollY=0;
   let menuUnlockScrollYOverride=null;
+  let deferClearAllRevealUntilMenuClose=false;
 
   // ── Build hamburger menu ──
   // Search input
@@ -1626,7 +1627,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
   function updateClearAllBtn(){
     var hasSearchValue=normalize(searchInput.value.trim()).length>0;
-    const show = (activeFilter!=='All') && hasSearchValue;
+    const show=(activeFilter!=='All')&&hasSearchValue&&!(deferClearAllRevealUntilMenuClose&&menuOpen);
     clearAllBtn.style.display = show ? '' : 'none';
   }
   updateClearAllBtn();
@@ -1683,6 +1684,12 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     btn.innerHTML=city+'<span class="menu-item-count">'+(cityCounts[city]||0)+'</span>';
     btn.addEventListener('click',function(){
       if(isMenuGhostTap()) return;
+      deferClearAllRevealUntilMenuClose=(
+        !phoneMenuMode&&
+        activeFilter==='All'&&
+        city!=='All'&&
+        normalize(searchInput.value.trim()).length>0
+      );
       setFilter(city);
       closeMenu();
     });
@@ -1826,9 +1833,11 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   }
 
   function openMenu(){
+    deferClearAllRevealUntilMenuClose=false;
     menuOpen=true;
     menuOpenedAt=Date.now();
     syncPhoneMenuMode();
+    updateClearAllBtn();
     menuDropdown.classList.add('open');
     menuOverlay.classList.add('open');
     if(!phoneMenuMode){
@@ -1845,6 +1854,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
         updateClearAllBtn();
       }
     }
+    deferClearAllRevealUntilMenuClose=false;
     menuOpen=false;
     menuPositionRafPending=false;
     unlockPageScrollForPhoneMenu();
