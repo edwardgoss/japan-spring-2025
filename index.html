@@ -2206,6 +2206,14 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       // If the user started scrolling before the delayed relayout runs,
       // do not restore an older anchor position.
       if(Math.abs((window.scrollY||0)-baselineScrollY)>2){
+        if(
+          forced&&
+          !hasUserScrollIntentSinceOrientation(Date.now())&&
+          !shouldSkipForcedOrientationAnchor()
+        ){
+          applyAnchoredRelayout(forced);
+          return;
+        }
         layout();
         updateNowShowing();
         return;
@@ -2229,6 +2237,11 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     orientationFinalizeTimer=setTimeout(function(){
       if(lightbox.classList.contains('active')) return;
       if(!useCustomOrientationAnchoring||shouldSkipForcedOrientationAnchor()){
+        layout();
+        updateNowShowing();
+      }else if(!isSafariBrowser&&chromeMidScrollRotation){
+        // For Chrome mid-scroll rotations, avoid a late second forced anchor
+        // that can interrupt resumed scrolling after the initial settle pass.
         layout();
         updateNowShowing();
       }else if(isSafariBrowser&&safariOrientationAnchorApplied){
@@ -2300,6 +2313,14 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       scheduleOrientationFinalize();
       return;
     }
+    if(inOrientationSettle&&!isSafariBrowser){
+      // Non-Safari mobile gets a single orientation-change anchor pass.
+      // Resize bursts during settle should only refresh geometry.
+      layout();
+      updateNowShowing();
+      scheduleOrientationFinalize();
+      return;
+    }
     if(inOrientationSettle&&isSafariBrowser){
       if(!safariOrientationAnchorApplied&&preferredRotationAnchor&&!shouldSkipForcedOrientationAnchor()){
         applyAnchoredRelayout(preferredRotationAnchor);
@@ -2342,7 +2363,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       if(isSafariBrowser){
         scheduleSafariEarlyOrientationAnchor();
       }else{
-        scheduleAnchoredRelayout(0,preferredRotationAnchor);
+        scheduleAnchoredRelayout(80,preferredRotationAnchor);
       }
       if(chromeMidScrollRotation){
         // Preserve gallery anchor first; run Chrome viewport health pass after settle.
