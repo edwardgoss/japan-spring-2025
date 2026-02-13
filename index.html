@@ -86,7 +86,11 @@
     top:0;left:0;right:0;z-index:50;
     background:var(--header-bg);
     backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-    padding:calc(8px + env(safe-area-inset-top)) 24px 6px;
+    padding:
+      calc(8px + env(safe-area-inset-top))
+      calc(24px + min(env(safe-area-inset-right), 12px))
+      6px
+      calc(24px + min(env(safe-area-inset-left), 12px));
     text-align:center;
     isolation:isolate;
   }
@@ -509,7 +513,8 @@
   /* ── Scroll to top ── */
   .scroll-top{
     position:fixed;
-    bottom:24px;right:24px;
+    bottom:max(24px, calc(12px + env(safe-area-inset-bottom)));
+    right:max(24px, calc(12px + env(safe-area-inset-right)));
     z-index:40;
     width:36px;height:36px;
     border-radius:50%;
@@ -532,7 +537,11 @@
   }
   .scroll-top:hover{opacity:.8}
   @media(max-width:600px){
-    .scroll-top{bottom:16px;right:16px;width:32px;height:32px;font-size:.75rem}
+    .scroll-top{
+      bottom:max(16px, calc(8px + env(safe-area-inset-bottom)));
+      right:max(16px, calc(8px + env(safe-area-inset-right)));
+      width:32px;height:32px;font-size:.75rem
+    }
   }
 
   .jp{
@@ -552,7 +561,13 @@
 
   /* ── Mobile ── */
   @media(max-width:600px){
-    header{padding:calc(9px + env(safe-area-inset-top)) 16px 7px}
+    header{
+      padding:
+        calc(9px + env(safe-area-inset-top))
+        calc(16px + min(env(safe-area-inset-right), 10px))
+        7px
+        calc(16px + min(env(safe-area-inset-left), 10px));
+    }
     header h1{font-size:1.4rem}
     .now-showing{font-size:.68rem;line-height:1.3;min-height:1.3em}
     .now-showing-filtered{font-size:.67rem}
