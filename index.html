@@ -1419,7 +1419,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const menuBtn=document.getElementById('menuBtn');
   const menuDropdown=document.getElementById('menuDropdown');
   const menuOverlay=document.getElementById('menuOverlay');
-  const headerEl=document.querySelector('header');
 
   let current=0;
   let lightboxOpenCurrent=-1;
@@ -1562,79 +1561,90 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   menuFooterCredit.textContent='\u00a9 Edward Goss';
   menuDropdown.appendChild(menuFooterCredit);
 
-  function positionMenuDropdown(){
-    if(menuPositionLockedForEditing) return;
-    if(!headerEl) return;
-    var headerRect=headerEl.getBoundingClientRect();
-    var btnRect=menuBtn.getBoundingClientRect();
-    var top=Math.max(0,(btnRect.bottom-headerRect.top)+8);
-    var right=Math.max(0,headerRect.right-btnRect.right);
-    menuDropdown.style.top=top+'px';
-    menuDropdown.style.right=right+'px';
-  }
-  let menuPositionLockedForEditing=false;
-  let menuLockedVisualTop=0;
-  let menuLockedRight=0;
-  function getMenuViewportMetrics(){
-    if(window.visualViewport){
-      return{
-        top:window.visualViewport.offsetTop||0,
-        height:window.visualViewport.height||window.innerHeight||0
-      };
-    }
-    return{
-      top:0,
-      height:window.innerHeight||0
-    };
-  }
-  function syncLockedMenuDropdownHeight(){
-    if(!menuPositionLockedForEditing) return;
-    var vm=getMenuViewportMetrics();
-    if(vm.height<=0) return;
-    var visualBottom=vm.top+vm.height;
-    var maxH=Math.max(120,Math.round(visualBottom-menuLockedVisualTop-8));
-    menuDropdown.style.top=menuLockedVisualTop+'px';
-    menuDropdown.style.right=menuLockedRight+'px';
-    menuDropdown.style.maxHeight=maxH+'px';
-  }
-  function lockMenuDropdownForEditing(){
-    if(menuPositionLockedForEditing||!menuOpen) return;
-    var rect=menuDropdown.getBoundingClientRect();
-    menuLockedVisualTop=Math.max(0,Math.round(rect.top));
-    menuLockedRight=Math.max(0,Math.round((window.innerWidth||0)-rect.right));
-    menuDropdown.style.position='fixed';
-    menuDropdown.style.top=menuLockedVisualTop+'px';
-    menuDropdown.style.right=menuLockedRight+'px';
-    menuDropdown.style.left='auto';
-    menuDropdown.style.bottom='auto';
-    menuPositionLockedForEditing=true;
-    syncLockedMenuDropdownHeight();
-  }
-  function unlockMenuDropdownForEditing(){
-    if(!menuPositionLockedForEditing) return;
-    menuPositionLockedForEditing=false;
+  function resetMenuDropdownPositionStyles(){
     menuDropdown.style.removeProperty('position');
     menuDropdown.style.removeProperty('top');
     menuDropdown.style.removeProperty('right');
     menuDropdown.style.removeProperty('left');
     menuDropdown.style.removeProperty('bottom');
     menuDropdown.style.removeProperty('max-height');
-    menuLockedVisualTop=0;
-    menuLockedRight=0;
+  }
+  function getMenuViewportMetrics(){
+    if(window.visualViewport){
+      return{
+        width:window.visualViewport.width||window.innerWidth||document.documentElement.clientWidth||0,
+        height:window.visualViewport.height||window.innerHeight||0
+      };
+    }
+    return{
+      width:window.innerWidth||document.documentElement.clientWidth||0,
+      height:window.innerHeight||0
+    };
+  }
+
+  function positionMenuDropdown(){
+    if(!menuOpen||!menuBtn) return;
+    var vm=getMenuViewportMetrics();
+    var viewportH=Math.round(vm.height||0);
+    if(viewportH<=0) return;
+    var viewportW=Math.max(0,Math.round(vm.width||window.innerWidth||document.documentElement.clientWidth||0));
+    var btnRect=menuBtn.getBoundingClientRect();
+    var minTop=6;
+    var top=Math.round(btnRect.bottom+8);
+    top=Math.max(minTop,Math.min(top,Math.max(minTop,viewportH-40)));
+    var right=Math.max(0,Math.round(viewportW-btnRect.right));
+    var maxH=Math.max(0,Math.round(viewportH-top-8));
+    menuDropdown.style.position='fixed';
+    menuDropdown.style.top=top+'px';
+    menuDropdown.style.right=right+'px';
+    menuDropdown.style.left='auto';
+    menuDropdown.style.bottom='auto';
+    menuDropdown.style.maxHeight=maxH+'px';
+  }
+
+  let menuPositionRafPending=false;
+  let menuSearchFocusScrollY=0;
+  let menuSearchScrollRestoreRaf=0;
+  function scheduleMenuDropdownPosition(){
+    if(!menuOpen) return;
+    if(menuPositionRafPending) return;
+    menuPositionRafPending=true;
+    requestAnimationFrame(function(){
+      menuPositionRafPending=false;
+      positionMenuDropdown();
+    });
   }
   function isMenuSearchEditing(){
     return !!(menuOpen&&document.activeElement===searchInput);
   }
+  function scheduleMenuSearchScrollRestore(){
+    if(!isMenuSearchEditing()) return;
+    if(menuSearchScrollRestoreRaf) return;
+    menuSearchScrollRestoreRaf=requestAnimationFrame(function(){
+      menuSearchScrollRestoreRaf=0;
+      if(!isMenuSearchEditing()) return;
+      if(Math.abs((window.scrollY||0)-menuSearchFocusScrollY)>1){
+        window.scrollTo({left:0,top:menuSearchFocusScrollY,behavior:'instant'});
+      }
+      scheduleMenuDropdownPosition();
+    });
+  }
 
   function openMenu(){
-    positionMenuDropdown();
     menuOpen=true;
     menuDropdown.classList.add('open');
     menuOverlay.classList.add('open');
+    scheduleMenuDropdownPosition();
+    setTimeout(scheduleMenuDropdownPosition,40);
   }
   function closeMenu(){
     menuOpen=false;
-    unlockMenuDropdownForEditing();
+    menuPositionRafPending=false;
+    if(menuSearchScrollRestoreRaf){
+      cancelAnimationFrame(menuSearchScrollRestoreRaf);
+      menuSearchScrollRestoreRaf=0;
+    }
+    resetMenuDropdownPositionStyles();
     menuDropdown.classList.remove('open');
     menuOverlay.classList.remove('open');
     // Dismiss iOS keyboard / zoom if search is focused
@@ -1660,49 +1670,49 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   menuOverlay.addEventListener('click',closeMenu);
   window.addEventListener('resize',function(){
     if(!menuOpen) return;
-    if(isMenuSearchEditing()){
-      syncLockedMenuDropdownHeight();
-      return;
-    }
-    positionMenuDropdown();
+    scheduleMenuSearchScrollRestore();
+    scheduleMenuDropdownPosition();
   });
   if(window.visualViewport){
     window.visualViewport.addEventListener('resize',function(){
       if(!menuOpen) return;
-      if(isMenuSearchEditing()){
-        syncLockedMenuDropdownHeight();
-        return;
-      }
-      positionMenuDropdown();
+      scheduleMenuSearchScrollRestore();
+      scheduleMenuDropdownPosition();
     });
     window.visualViewport.addEventListener('scroll',function(){
       if(!menuOpen) return;
-      if(!isMenuSearchEditing()) return;
-      syncLockedMenuDropdownHeight();
+      scheduleMenuSearchScrollRestore();
+      scheduleMenuDropdownPosition();
     });
   }
   window.addEventListener('scroll',function(){
     if(!menuOpen) return;
-    if(!isMenuSearchEditing()) return;
-    syncLockedMenuDropdownHeight();
+    scheduleMenuSearchScrollRestore();
+    scheduleMenuDropdownPosition();
   },{passive:true});
   window.addEventListener('orientationchange',function(){
     if(!menuOpen) return;
-    if(isMenuSearchEditing()){
-      syncLockedMenuDropdownHeight();
-      return;
-    }
-    setTimeout(positionMenuDropdown,300);
+    scheduleMenuSearchScrollRestore();
+    setTimeout(scheduleMenuDropdownPosition,80);
+    setTimeout(scheduleMenuDropdownPosition,320);
   });
   searchInput.addEventListener('focus',function(){
     if(!menuOpen) return;
-    positionMenuDropdown();
-    lockMenuDropdownForEditing();
+    menuSearchFocusScrollY=window.scrollY||0;
+    scheduleMenuSearchScrollRestore();
+    setTimeout(scheduleMenuSearchScrollRestore,60);
+    setTimeout(scheduleMenuSearchScrollRestore,180);
+    setTimeout(scheduleMenuSearchScrollRestore,320);
+    scheduleMenuDropdownPosition();
+    setTimeout(scheduleMenuDropdownPosition,120);
   });
   searchInput.addEventListener('blur',function(){
     if(!menuOpen) return;
-    unlockMenuDropdownForEditing();
-    setTimeout(positionMenuDropdown,80);
+    if(menuSearchScrollRestoreRaf){
+      cancelAnimationFrame(menuSearchScrollRestoreRaf);
+      menuSearchScrollRestoreRaf=0;
+    }
+    setTimeout(scheduleMenuDropdownPosition,80);
   });
 
   // Header title: scroll to top (does not interfere with hamburger button)
