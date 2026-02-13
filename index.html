@@ -1590,10 +1590,15 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     var viewportW=Math.max(0,Math.round(vm.width||window.innerWidth||document.documentElement.clientWidth||0));
     var btnRect=menuBtn.getBoundingClientRect();
     var minTop=6;
-    var top=Math.round(btnRect.bottom+8);
-    top=Math.max(minTop,Math.min(top,Math.max(minTop,viewportH-40)));
+    var minVisibleHeight=88;
+    var top=Math.max(minTop,Math.round(btnRect.bottom+8));
     var right=Math.max(0,Math.round(viewportW-btnRect.right));
-    var maxH=Math.max(0,Math.round(viewportH-top-8));
+    var maxH=Math.round(viewportH-top-8);
+    if(maxH<minVisibleHeight){
+      top=minTop;
+      maxH=Math.round(viewportH-top-8);
+    }
+    maxH=Math.max(minVisibleHeight,Math.min(maxH,Math.max(minVisibleHeight,Math.round(viewportH-12))));
     menuDropdown.style.position='fixed';
     menuDropdown.style.top=top+'px';
     menuDropdown.style.right=right+'px';
