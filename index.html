@@ -765,6 +765,11 @@
     overflow-y:auto;
     overscroll-behavior:contain;
     -webkit-overflow-scrolling:touch;
+    transition:none;
+    transform:none;
+  }
+  html.phone-menu-mode .menu-dropdown.open{
+    transform:none;
   }
   html.phone-menu-mode .menu-search{
     --menu-search-top:12px;
@@ -779,6 +784,7 @@
     padding:11px 56px 11px 14px;
     border-radius:10px;
     font-size:18px;
+    transition:none;
   }
   html.phone-menu-mode .menu-search-clear{
     right:22px;
@@ -788,6 +794,7 @@
     padding:8px 10px;
     opacity:.62;
     line-height:1;
+    transition:none;
   }
   html.phone-menu-mode .menu-search-clear.visible{
     opacity:.9;
