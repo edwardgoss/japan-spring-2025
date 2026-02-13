@@ -418,7 +418,9 @@
   }
 
   .lightbox-close{
-    position:absolute;top:8px;right:20px;
+    position:absolute;
+    top:max(8px, calc(8px + env(safe-area-inset-top)));
+    right:max(20px, calc(12px + env(safe-area-inset-right)));
     background:none;border:none;
     color:#fff;font-size:2rem;
     cursor:pointer;opacity:.7;
@@ -659,10 +661,6 @@
       max-height:calc(100vh - var(--caption-h,80px) - (var(--lightbox-photo-gap) * 2) - var(--lightbox-top-clearance));
       max-height:calc(100dvh - var(--caption-h,80px) - (var(--lightbox-photo-gap) * 2) - var(--lightbox-top-clearance));
       margin-top:calc(var(--lightbox-photo-gap) + var(--lightbox-top-clearance));
-    }
-    html.chrome-mobile .lightbox-close{
-      top:calc(8px + env(safe-area-inset-top));
-      right:calc(20px + env(safe-area-inset-right));
     }
   }
 
