@@ -90,6 +90,15 @@
     width:100%;
     top:calc(-1 * var(--menu-lock-scroll,0px));
   }
+  html.ios-mobile-safari body.menu-open{
+    /* iOS Safari 26: fixed-body scroll lock can break toolbar translucency. */
+    position:static;
+    left:auto;
+    right:auto;
+    width:100%;
+    top:auto;
+    overflow:hidden;
+  }
 
   /* ── Header ── */
   header{
@@ -1767,13 +1776,19 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     if(document.body.classList.contains('menu-open')) return;
     menuLockedScrollY=window.scrollY||window.pageYOffset||0;
     menuUnlockScrollYOverride=null;
-    document.documentElement.style.setProperty('--menu-lock-scroll',menuLockedScrollY+'px');
+    if(!isMobileSafari){
+      document.documentElement.style.setProperty('--menu-lock-scroll',menuLockedScrollY+'px');
+    }
     document.body.classList.add('menu-open');
   }
   function unlockPageScrollForPhoneMenu(){
     if(!document.body.classList.contains('menu-open')) return;
     document.body.classList.remove('menu-open');
     document.documentElement.style.removeProperty('--menu-lock-scroll');
+    if(isMobileSafari){
+      menuUnlockScrollYOverride=null;
+      return;
+    }
     var restoreY=Number.isFinite(menuUnlockScrollYOverride)?menuUnlockScrollYOverride:menuLockedScrollY;
     menuUnlockScrollYOverride=null;
     window.scrollTo({left:0,top:restoreY,behavior:'instant'});
