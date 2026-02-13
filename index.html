@@ -388,8 +388,8 @@
   .lightbox{
     position:fixed;
     top:0;left:0;right:0;
-    height:100vh;
-    height:100dvh;
+    height:var(--lightbox-vh,100vh);
+    height:var(--lightbox-vh,100dvh);
     z-index:100;
     background:var(--lightbox-bg);
     --lightbox-top-clearance:0px;
@@ -402,13 +402,6 @@
     transition:opacity .25s ease;
     touch-action:pinch-zoom;
     overflow:hidden;
-  }
-  @supports (height:100lvh){
-    .lightbox{
-      /* Use large viewport height where available so collapsing browser chrome
-         cannot reveal page content below the modal. */
-      height:100lvh;
-    }
   }
   .lightbox.active{
     display:grid;
@@ -2449,6 +2442,38 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     window.scrollTo({left:0,top:Math.max(0,m.top-headerH-10),behavior:'instant'});
   }
 
+  function getLightboxViewportHeight(){
+    var innerH=Math.round(window.innerHeight||0);
+    if(!window.visualViewport) return innerH;
+    var vvH=Math.round((window.visualViewport.height||0)+(window.visualViewport.offsetTop||0));
+    return Math.max(innerH,vvH);
+  }
+
+  function syncLightboxViewportHeight(){
+    var h=getLightboxViewportHeight();
+    if(h>0){
+      document.documentElement.style.setProperty('--lightbox-vh',h+'px');
+    }
+  }
+
+  syncLightboxViewportHeight();
+  window.addEventListener('resize',function(){
+    syncLightboxViewportHeight();
+  });
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize',function(){
+      syncLightboxViewportHeight();
+    });
+  }
+  window.addEventListener('orientationchange',function(){
+    syncLightboxViewportHeight();
+    setTimeout(syncLightboxViewportHeight,420);
+  });
+  window.addEventListener('pageshow',function(){
+    syncLightboxViewportHeight();
+    setTimeout(syncLightboxViewportHeight,120);
+  });
+
   function beginLightboxLoadingState(){
     clearTimeout(lightboxSpinnerDelayTimer);
     lightbox.classList.add('loading');
@@ -2466,6 +2491,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   }
 
   function openLightbox(){
+    syncLightboxViewportHeight();
     const realIdx=filtered[current];
     const photoNum=realIdx+1;
     beginLightboxLoadingState();
