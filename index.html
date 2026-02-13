@@ -1901,6 +1901,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   let lightboxSettleTimerA=null;
   let lightboxSettleTimerB=null;
   let lightboxSettleToken=0;
+  let lightboxCloseStabilizeUntil=0;
   let orientationSettleUntil=0;
   let orientationFinalizeTimer=null;
   let orientationUiTimer=null;
@@ -2441,10 +2442,17 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     var viewportWNow=getLayoutViewportWidth();
     var widthDelta=Math.abs(viewportWNow-lastRelayoutViewportWidth);
     var viewportWidthMismatch=getViewportWidthMismatch();
+    var inLightboxCloseStabilize=nowTs<lightboxCloseStabilizeUntil;
     if(hasUserScrollIntentSinceOrientation(nowTs)){
       userScrolledDuringOrientationSettle=true;
     }
     var inOrientationSettle=nowTs<orientationSettleUntil;
+    if(inLightboxCloseStabilize&&widthDelta>120){
+      // After closing a rotated lightbox, consume one-off stale width deltas so
+      // regular toolbar resize events cannot repeatedly trigger re-anchors.
+      lastRelayoutViewportWidth=viewportWNow;
+      return;
+    }
     if(
       isIPadLike&&
       !inOrientationSettle&&
@@ -2460,6 +2468,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       return;
     }
     var shouldPreOrientationForceAnchor=
+      !inLightboxCloseStabilize&&
       !inOrientationSettle&&
       widthDelta>120&&
       (
@@ -2486,6 +2495,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
         orientationChangeStartedAt=0;
         userScrolledDuringOrientationSettle=false;
         preferredRotationAnchor=cloneGalleryAnchor(preOrientationAnchor);
+        lastRelayoutViewportWidth=viewportWNow;
         orientationSettleUntil=nowTs+ORIENTATION_SETTLE_MS;
         scheduleAnchoredRelayout(0,preOrientationAnchor);
         scheduleOrientationFinalize();
@@ -2967,6 +2977,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
     // Re-layout immediately so scroll decisions use the current geometry.
     layout();
+    lastRelayoutViewportWidth=getLayoutViewportWidth();
 
     if(shouldSyncToTarget){
       if(!isPhotoVisibleInGalleryViewport(targetIndex)){
@@ -2978,6 +2989,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     }
 
     lightboxRotatedWhileOpen=false;
+    lightboxCloseStabilizeUntil=Date.now()+((hadRotation&&isSafariBrowser&&isIPadLike)?1400:320);
 
     // Re-layout follow-up in case viewport continues settling after close.
     pendingLayoutAfterLightbox=false;
