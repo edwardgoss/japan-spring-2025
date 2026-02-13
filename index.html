@@ -563,8 +563,8 @@
     width:36px;height:36px;
     border-radius:50%;
     border:none;
-    background:var(--text);
-    color:var(--bg);
+    background:rgba(17,17,17,.78);
+    color:#f5f5f5;
     font-size:.85rem;
     cursor:pointer;
     opacity:0;
@@ -573,6 +573,10 @@
     transform:translateY(8px);
     display:flex;align-items:center;justify-content:center;
     box-shadow:0 2px 10px rgba(0,0,0,.15);
+  }
+  html.ios-mobile-safari .scroll-top{
+    /* Keep this control away from Safari's bottom toolbar color sampling area. */
+    bottom:calc(84px + env(safe-area-inset-bottom));
   }
   .scroll-top.visible{
     opacity:.5;
@@ -585,6 +589,9 @@
       bottom:max(16px, calc(8px + env(safe-area-inset-bottom)));
       right:max(16px, calc(8px + env(safe-area-inset-right)));
       width:32px;height:32px;font-size:.75rem
+    }
+    html.ios-mobile-safari .scroll-top{
+      bottom:calc(76px + env(safe-area-inset-bottom));
     }
   }
 
@@ -1000,6 +1007,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const isSafariBrowser=/Safari/i.test(ua)&&!/Chrome|CriOS|FxiOS|EdgiOS|OPiOS|OPR|Android/i.test(ua);
   const isFirefoxBrowser=/Firefox/i.test(ua)&&!/FxiOS/i.test(ua);
   const isFirefoxMobileBrowser=/Firefox|FxiOS/i.test(ua)&&(navigator.maxTouchPoints>0||isCoarsePointer);
+  const isMobileSafari=isSafariBrowser&&isIOSLike&&(navigator.maxTouchPoints>0||isCoarsePointer);
+  document.documentElement.classList.toggle('ios-mobile-safari',isMobileSafari);
   document.documentElement.classList.toggle('firefox-mobile-bottom-cover',isFirefoxMobileBrowser);
   const isChromeMobileBrowser=/Chrome|CriOS/i.test(ua)&&!/EdgA|EdgiOS|OPR|OPiOS|SamsungBrowser|YaBrowser|UCBrowser/i.test(ua)&&(/Android/i.test(ua)||/CriOS/i.test(ua));
   const INITIAL_EAGER = isIOSLike
