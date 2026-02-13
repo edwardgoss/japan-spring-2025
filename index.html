@@ -276,7 +276,7 @@
     background:var(--menu-input-bg);
     color:var(--menu-input-text);
     font-family:'Libre Baskerville',Georgia,'Times New Roman',serif;
-    font-size:.74rem;
+    font-size:.88rem;
     outline:none;
     letter-spacing:.02em;
     transition:border-color .15s,background-color .15s;
@@ -290,11 +290,11 @@
   }
   .menu-search-clear{
     position:absolute;
-    right:18px;top:50%;
-    transform:translateY(-70%);
+    right:18px;top:24px;
+    transform:translateY(-50%);
     background:none;border:none;
     color:var(--text-secondary);
-    font-size:.75rem;
+    font-size:1.32rem;
     cursor:pointer;
     opacity:0;
     pointer-events:none;
@@ -1625,8 +1625,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   }
 
   function updateClearAllBtn(){
-    var searchValueForUi=phoneMenuMode?normalize(searchInput.value.trim()):activeSearch;
-    const show = (activeFilter!=='All') || (searchValueForUi && searchValueForUi.length>0);
+    var hasSearchValue=normalize(searchInput.value.trim()).length>0;
+    const show = (activeFilter!=='All') && hasSearchValue;
     clearAllBtn.style.display = show ? '' : 'none';
   }
   updateClearAllBtn();
