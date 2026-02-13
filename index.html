@@ -838,98 +838,14 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const pendingPromotionQueue=[];
   const pendingPromotionSet=new Set();
   let lazyObserver=null;
-  const TRACE_ENABLED=/(?:\?|&)trace=1(?:&|$)/.test(window.location.search);
-  const TRACE_MAX_EVENTS=500;
-  const traceEvents=[];
+  const TRACE_ENABLED=false;
 
   function traceRound(value){
     var n=Number(value);
     return Number.isFinite(n)?Math.round(n):null;
   }
 
-  function traceStateSnapshot(){
-    var vv=window.visualViewport;
-    return{
-      y:traceRound(window.scrollY||window.pageYOffset||0),
-      x:traceRound(window.scrollX||window.pageXOffset||0),
-      iw:traceRound(window.innerWidth||0),
-      ih:traceRound(window.innerHeight||0),
-      cw:traceRound(document.documentElement.clientWidth||0),
-      ch:traceRound(document.documentElement.clientHeight||0),
-      orientation:window.matchMedia('(orientation:landscape)').matches?'landscape':'portrait',
-      vvW:vv?traceRound(vv.width):null,
-      vvH:vv?traceRound(vv.height):null,
-      vvScale:vv&&typeof vv.scale==='number'?Number(vv.scale.toFixed(3)):null
-    };
-  }
-
-  function traceLog(tag,meta){
-    if(!TRACE_ENABLED) return;
-    var entry=Object.assign({
-      t:Date.now(),
-      tag:String(tag||'event')
-    },traceStateSnapshot(),meta||{});
-    traceEvents.push(entry);
-    if(traceEvents.length>TRACE_MAX_EVENTS){
-      traceEvents.splice(0,traceEvents.length-TRACE_MAX_EVENTS);
-    }
-  }
-
-  function buildTracePayload(){
-    return JSON.stringify({
-      generatedAt:new Date().toISOString(),
-      href:window.location.href,
-      ua:ua,
-      events:traceEvents
-    },null,2);
-  }
-
-  function copyTracePayload(){
-    var payload=buildTracePayload();
-    if(navigator.clipboard&&typeof navigator.clipboard.writeText==='function'){
-      navigator.clipboard.writeText(payload).then(function(){
-        traceLog('trace_copy_success');
-      }).catch(function(){
-        window.prompt('Copy trace payload',payload);
-      });
-      return;
-    }
-    window.prompt('Copy trace payload',payload);
-  }
-
-  function installTraceUi(){
-    if(!TRACE_ENABLED) return;
-    var dock=document.createElement('div');
-    dock.style.cssText='position:fixed;left:10px;bottom:10px;z-index:9999;display:flex;gap:8px;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;';
-
-    var copyBtn=document.createElement('button');
-    copyBtn.type='button';
-    copyBtn.textContent='Copy Trace';
-    copyBtn.style.cssText='padding:8px 10px;border:1px solid rgba(0,0,0,.25);border-radius:8px;background:#111;color:#fff;font-size:12px;line-height:1;opacity:.92;';
-    copyBtn.addEventListener('click',function(){
-      copyTracePayload();
-      copyBtn.textContent='Copied';
-      setTimeout(function(){ copyBtn.textContent='Copy Trace'; },1200);
-    });
-
-    var clearBtn=document.createElement('button');
-    clearBtn.type='button';
-    clearBtn.textContent='Clear';
-    clearBtn.style.cssText='padding:8px 10px;border:1px solid rgba(0,0,0,.18);border-radius:8px;background:#fff;color:#111;font-size:12px;line-height:1;opacity:.92;';
-    clearBtn.addEventListener('click',function(){
-      traceEvents.length=0;
-      traceLog('trace_cleared');
-    });
-
-    dock.appendChild(copyBtn);
-    dock.appendChild(clearBtn);
-    document.body.appendChild(dock);
-    traceLog('trace_enabled');
-  }
-
-  window.__galleryTraceEvents=traceEvents;
-  window.__copyGalleryTrace=copyTracePayload;
-  installTraceUi();
+  function traceLog(){}
 
   function drainPromotionQueue(){
     if(!isSafariBrowser) return;
@@ -2166,7 +2082,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     var mismatch=hasChromeViewportOrientationMismatch();
     var xOffset=Math.abs(window.scrollX||window.pageXOffset||0)>1;
     var unhealthy=zoomed||mismatch||xOffset;
-    traceLog('chrome_heal_enter',{
+    if(TRACE_ENABLED)traceLog('chrome_heal_enter',{
       force:!!force,
       unhealthy:!!unhealthy,
       zoomed:!!zoomed,
@@ -2178,14 +2094,14 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     var nowTs=Date.now();
     if(chromeMidScrollRotation&&nowTs<orientationSettleUntil+140){
       var deferred=Math.max(120,(orientationSettleUntil-nowTs)+140);
-      traceLog('chrome_heal_deferred_mid_scroll',{deferred:traceRound(deferred)});
+      if(TRACE_ENABLED)traceLog('chrome_heal_deferred_mid_scroll',{deferred:traceRound(deferred)});
       scheduleChromeViewportHealthCheck(deferred,false);
       return;
     }
     var viewportUpdated=applyChromeNoZoomViewport();
     if(!unhealthy){
       // Avoid no-op force passes from interrupting touch scroll inertia.
-      traceLog('chrome_heal_not_unhealthy',{viewportUpdated:!!viewportUpdated});
+      if(TRACE_ENABLED)traceLog('chrome_heal_not_unhealthy',{viewportUpdated:!!viewportUpdated});
       if(!viewportUpdated) return;
       return;
     }
@@ -2194,17 +2110,17 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       isScrollRecentlyActive(nowTs)||
       (nowTs<orientationSettleUntil&&userScrolledDuringOrientationSettle)
     ){
-      traceLog('chrome_heal_deferred_recent_input');
+      if(TRACE_ENABLED)traceLog('chrome_heal_deferred_recent_input');
       scheduleChromeViewportHealthCheck(170,false);
       return;
     }
     if(!xOffset){
       // For pure orientation/scale corrections, avoid forced scroll writes
       // that can perturb vertical position during or right after rotation.
-      traceLog('chrome_heal_skip_no_x_offset');
+      if(TRACE_ENABLED)traceLog('chrome_heal_skip_no_x_offset');
       return;
     }
-    traceLog('chrome_heal_apply_scroll_reset');
+    if(TRACE_ENABLED)traceLog('chrome_heal_apply_scroll_reset');
     resetHorizontalViewportOffset();
     requestAnimationFrame(resetHorizontalViewportOffset);
   }
@@ -2295,7 +2211,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     lightboxSettleTimerB=setTimeout(run,600);
   }
   function applyAnchoredRelayout(anchor){
-    traceLog('apply_anchored_relayout',{
+    if(TRACE_ENABLED)traceLog('apply_anchored_relayout',{
       index:anchor?anchor.index:null,
       offset:anchor?traceRound(anchor.offset):null
     });
@@ -2314,7 +2230,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     var forced=cloneGalleryAnchor(forcedAnchor);
     var anchor=forced||captureGalleryScrollAnchor(false);
     var baselineScrollY=window.scrollY||0;
-    traceLog('schedule_anchored_relayout',{
+    if(TRACE_ENABLED)traceLog('schedule_anchored_relayout',{
       delay:traceRound(delay),
       forced:!!forced,
       forcedIndex:forced?forced.index:null,
@@ -2326,7 +2242,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       // do not restore an older anchor position.
       var currentY=window.scrollY||0;
       if(Math.abs(currentY-baselineScrollY)>2){
-        traceLog('run_anchored_relayout_scroll_changed',{
+        if(TRACE_ENABLED)traceLog('run_anchored_relayout_scroll_changed',{
           forced:!!forced,
           currentY:traceRound(currentY),
           baselineY:traceRound(baselineScrollY)
@@ -2336,24 +2252,24 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
           !hasUserScrollIntentSinceOrientation(Date.now())&&
           !shouldSkipForcedOrientationAnchor()
         ){
-          traceLog('run_anchored_relayout_apply_forced_after_momentum',{
+          if(TRACE_ENABLED)traceLog('run_anchored_relayout_apply_forced_after_momentum',{
             forcedIndex:forced.index
           });
           applyAnchoredRelayout(forced);
           return;
         }
-        traceLog('run_anchored_relayout_layout_only_after_scroll_change');
+        if(TRACE_ENABLED)traceLog('run_anchored_relayout_layout_only_after_scroll_change');
         layout();
         updateNowShowing();
         return;
       }
       if(forced&&shouldSkipForcedOrientationAnchor()){
-        traceLog('run_anchored_relayout_skip_forced_due_to_user_input',{forcedIndex:forced.index});
+        if(TRACE_ENABLED)traceLog('run_anchored_relayout_skip_forced_due_to_user_input',{forcedIndex:forced.index});
         layout();
         updateNowShowing();
         return;
       }
-      traceLog('run_anchored_relayout_apply_anchor',{
+      if(TRACE_ENABLED)traceLog('run_anchored_relayout_apply_anchor',{
         anchorIndex:anchor?anchor.index:null
       });
       applyAnchoredRelayout(anchor);
@@ -2398,7 +2314,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
         layout();
         updateNowShowing();
       }
-      traceLog('orientation_finalize',{
+      if(TRACE_ENABLED)traceLog('orientation_finalize',{
         branch:finalizeBranch,
         preferredIndex:preferredRotationAnchor?preferredRotationAnchor.index:null,
         chromeMidScrollRotation:!!chromeMidScrollRotation,
@@ -2434,7 +2350,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   function scheduleSafariEarlyOrientationAnchor(){
     if(!isSafariBrowser||!preferredRotationAnchor) return;
     var token=++safariEarlyAnchorToken;
-    traceLog('schedule_safari_early_anchor',{
+    if(TRACE_ENABLED)traceLog('schedule_safari_early_anchor',{
       token:token,
       preferredIndex:preferredRotationAnchor.index
     });
@@ -2445,7 +2361,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
         if(Date.now()>=orientationSettleUntil) return;
         if(safariOrientationAnchorApplied) return;
         if(shouldSkipForcedOrientationAnchor()) return;
-        traceLog('apply_safari_early_anchor',{
+        if(TRACE_ENABLED)traceLog('apply_safari_early_anchor',{
           token:token,
           preferredIndex:preferredRotationAnchor?preferredRotationAnchor.index:null
         });
@@ -2458,7 +2374,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   function schedulePhoneEarlyOrientationAnchor(){
     if(isSafariBrowser||!useEarlyPhoneOrientationAnchor||!preferredRotationAnchor) return;
     var token=++phoneEarlyAnchorToken;
-    traceLog('schedule_phone_early_anchor',{
+    if(TRACE_ENABLED)traceLog('schedule_phone_early_anchor',{
       token:token,
       preferredIndex:preferredRotationAnchor.index
     });
@@ -2469,7 +2385,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
         if(Date.now()>=orientationSettleUntil) return;
         if(phoneOrientationAnchorApplied) return;
         if(shouldSkipForcedOrientationAnchor()) return;
-        traceLog('apply_phone_early_anchor',{
+        if(TRACE_ENABLED)traceLog('apply_phone_early_anchor',{
           token:token,
           preferredIndex:preferredRotationAnchor?preferredRotationAnchor.index:null
         });
@@ -2499,7 +2415,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     ){
       var preOrientationAnchor=latestScrollAnchor?cloneGalleryAnchor(latestScrollAnchor):captureGalleryScrollAnchor(true);
       if(preOrientationAnchor){
-        traceLog('resize_pre_orientation_force_anchor',{
+        if(TRACE_ENABLED)traceLog('resize_pre_orientation_force_anchor',{
           widthDelta:traceRound(widthDelta),
           anchorIndex:preOrientationAnchor.index,
           anchorOffset:traceRound(preOrientationAnchor.offset)
@@ -2514,7 +2430,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     if(!shouldRunResizeRelayout(inOrientationSettle)) return;
     if(inOrientationSettle&&(!useCustomOrientationAnchoring||userScrolledDuringOrientationSettle)){
       // Mid-scroll rotations should not force-anchor to older geometry snapshots.
-      traceLog('resize_in_settle_layout_only_due_to_user_scroll',{
+      if(TRACE_ENABLED)traceLog('resize_in_settle_layout_only_due_to_user_scroll',{
         useCustomOrientationAnchoring:!!useCustomOrientationAnchoring,
         userScrolledDuringOrientationSettle:!!userScrolledDuringOrientationSettle
       });
@@ -2526,13 +2442,13 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     if(inOrientationSettle&&!isSafariBrowser){
       if(useEarlyPhoneOrientationAnchor){
         if(!phoneOrientationAnchorApplied&&preferredRotationAnchor&&!shouldSkipForcedOrientationAnchor()){
-          traceLog('resize_in_settle_apply_phone_anchor',{
+          if(TRACE_ENABLED)traceLog('resize_in_settle_apply_phone_anchor',{
             preferredIndex:preferredRotationAnchor.index
           });
           applyAnchoredRelayout(preferredRotationAnchor);
           phoneOrientationAnchorApplied=true;
         }else{
-          traceLog('resize_in_settle_phone_layout_only',{
+          if(TRACE_ENABLED)traceLog('resize_in_settle_phone_layout_only',{
             phoneOrientationAnchorApplied:!!phoneOrientationAnchorApplied
           });
           layout();
@@ -2540,7 +2456,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
         }
       }else{
         // Larger non-Safari devices keep resize-settle layout-only behavior.
-        traceLog('resize_in_settle_non_safari_layout_only_large_device');
+        if(TRACE_ENABLED)traceLog('resize_in_settle_non_safari_layout_only_large_device');
         layout();
         updateNowShowing();
       }
@@ -2549,14 +2465,14 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     }
     if(inOrientationSettle&&isSafariBrowser){
       if(!safariOrientationAnchorApplied&&preferredRotationAnchor&&!shouldSkipForcedOrientationAnchor()){
-        traceLog('resize_in_settle_apply_safari_anchor',{
+        if(TRACE_ENABLED)traceLog('resize_in_settle_apply_safari_anchor',{
           preferredIndex:preferredRotationAnchor.index
         });
         applyAnchoredRelayout(preferredRotationAnchor);
         safariOrientationAnchorApplied=true;
       }else{
         // Keep Safari geometry current during settle without forcing extra snaps.
-        traceLog('resize_in_settle_safari_layout_only',{
+        if(TRACE_ENABLED)traceLog('resize_in_settle_safari_layout_only',{
           safariOrientationAnchorApplied:!!safariOrientationAnchorApplied
         });
         layout();
@@ -2571,7 +2487,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       delay=0;
     }
     var forced=inOrientationSettle?preferredRotationAnchor:null;
-    traceLog('resize_schedule_anchored_relayout',{
+    if(TRACE_ENABLED)traceLog('resize_schedule_anchored_relayout',{
       inOrientationSettle:!!inOrientationSettle,
       delay:traceRound(delay),
       forcedIndex:forced?forced.index:null
@@ -2589,7 +2505,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     phoneOrientationAnchorApplied=false;
     phoneEarlyAnchorToken++;
     chromeMidScrollRotation=isChromeMidScrollAtOrientation(nowTs);
-    traceLog('orientation_change_start',{
+    if(TRACE_ENABLED)traceLog('orientation_change_start',{
       chromeMidScrollRotation:!!chromeMidScrollRotation,
       latestAnchorAgeMs:latestScrollAnchorAt?traceRound(nowTs-latestScrollAnchorAt):null,
       latestAnchorIndex:latestScrollAnchor?latestScrollAnchor.index:null
@@ -2607,7 +2523,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     }else{
       updatePreferredRotationAnchor();
     }
-    traceLog('orientation_anchor_selected',{
+    if(TRACE_ENABLED)traceLog('orientation_anchor_selected',{
       usedCachedAnchor:usedCachedAnchor,
       preferredIndex:preferredRotationAnchor?preferredRotationAnchor.index:null,
       preferredOffset:preferredRotationAnchor?traceRound(preferredRotationAnchor.offset):null
@@ -2663,7 +2579,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
         lastScrollEventAt=nowTs;
         if(hasUserScrollIntentSinceOrientation(nowTs)&&!userScrolledDuringOrientationSettle){
           userScrolledDuringOrientationSettle=true;
-          traceLog('scroll_marked_user_scrolled_during_settle');
+          if(TRACE_ENABLED)traceLog('scroll_marked_user_scrolled_during_settle');
         }
         if(!suppressAnchorTrackingScroll&&!lightbox.classList.contains('active')){
           rotationAnchorLocked=false;
