@@ -1908,6 +1908,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   let lastUserScrollIntentAt=0;
   let lastScrollEventAt=0;
   let userScrolledDuringOrientationSettle=false;
+  let safariOrientationAnchorApplied=false;
   const viewportMeta=document.querySelector('meta[name="viewport"]');
   let baseViewportMetaContent=viewportMeta?viewportMeta.getAttribute('content')||'':'';
   let chromeViewportCheckTimerA=null;
@@ -2163,10 +2164,6 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       // If the user started scrolling before the delayed relayout runs,
       // do not restore an older anchor position.
       if(Math.abs((window.scrollY||0)-baselineScrollY)>2){
-        if(forced&&!shouldSkipForcedOrientationAnchor()){
-          applyAnchoredRelayout(forced);
-          return;
-        }
         layout();
         updateNowShowing();
         return;
@@ -2192,12 +2189,17 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       if(shouldSkipForcedOrientationAnchor()){
         layout();
         updateNowShowing();
+      }else if(isSafariBrowser&&safariOrientationAnchorApplied){
+        // Safari already received an anchored pass during settle; avoid re-snapping.
+        layout();
+        updateNowShowing();
       }else if(preferredRotationAnchor){
         applyAnchoredRelayout(preferredRotationAnchor);
       }else{
         layout();
         updateNowShowing();
       }
+      safariOrientationAnchorApplied=false;
       document.documentElement.classList.remove('orientation-settling');
     },ORIENTATION_FINALIZE_DELAY_MS);
   }
@@ -2226,9 +2228,14 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     var inOrientationSettle=Date.now()<orientationSettleUntil;
     if(!shouldRunResizeRelayout(inOrientationSettle)) return;
     if(inOrientationSettle&&isSafariBrowser){
-      // Keep Safari on the new column geometry immediately; reserve anchor correction for finalize.
-      layout();
-      updateNowShowing();
+      if(!safariOrientationAnchorApplied&&preferredRotationAnchor&&!shouldSkipForcedOrientationAnchor()){
+        applyAnchoredRelayout(preferredRotationAnchor);
+        safariOrientationAnchorApplied=true;
+      }else{
+        // Keep Safari geometry current during settle without forcing extra snaps.
+        layout();
+        updateNowShowing();
+      }
       scheduleOrientationFinalize();
       return;
     }
@@ -2243,6 +2250,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     var nowTs=Date.now();
     orientationSettleUntil=nowTs+ORIENTATION_SETTLE_MS;
     userScrolledDuringOrientationSettle=false;
+    safariOrientationAnchorApplied=false;
     if(hasRecentUserScrollIntent(nowTs)||isScrollRecentlyActive(nowTs)){
       userScrolledDuringOrientationSettle=true;
     }
@@ -2252,11 +2260,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       pendingLayoutAfterLightbox=true;
       return;
     }
-    if(!preferredRotationAnchor||!rotationAnchorLocked){
-      updatePreferredRotationAnchor();
-    }
+    updatePreferredRotationAnchor();
     rotationAnchorLocked=true;
-    if(!isSafariBrowser){
+    if(!isSafariBrowser&&!userScrolledDuringOrientationSettle){
       scheduleAnchoredRelayout(0,preferredRotationAnchor);
     }
     scheduleOrientationFinalize();
