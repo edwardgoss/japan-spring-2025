@@ -394,6 +394,7 @@
     background:var(--lightbox-bg);
     --lightbox-top-clearance:0px;
     --lightbox-spinner-size:32px;
+    --lightbox-bottom-cover:0px;
     display:none;
     grid-template-rows:minmax(0,1fr) auto;
     align-items:stretch;
@@ -406,6 +407,15 @@
   .lightbox.active{
     display:grid;
     opacity:1;
+  }
+  .lightbox.active::after{
+    content:"";
+    position:fixed;
+    left:0;right:0;bottom:0;
+    height:var(--lightbox-bottom-cover);
+    background:var(--lightbox-bg);
+    pointer-events:none;
+    z-index:109;
   }
   .lightbox img{
     grid-row:1;
@@ -858,6 +868,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const isIPadLike=/iPad/i.test(ua)||((navigator.platform||'')==='MacIntel'&&navigator.maxTouchPoints>1);
   const isSafariBrowser=/Safari/i.test(ua)&&!/Chrome|CriOS|FxiOS|EdgiOS|OPiOS|OPR|Android/i.test(ua);
   const isFirefoxBrowser=/Firefox/i.test(ua)&&!/FxiOS/i.test(ua);
+  const isFirefoxMobileBrowser=/Firefox|FxiOS/i.test(ua)&&(navigator.maxTouchPoints>0||window.matchMedia('(hover:none) and (pointer:coarse)').matches);
   const isChromeMobileBrowser=/Chrome|CriOS/i.test(ua)&&!/EdgA|EdgiOS|OPR|OPiOS|SamsungBrowser|YaBrowser|UCBrowser/i.test(ua)&&(/Android/i.test(ua)||/CriOS/i.test(ua));
   const INITIAL_EAGER = isIOSLike
     ? (isIPadLike?8:9)
@@ -2456,22 +2467,63 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     }
   }
 
+  function setLightboxBottomCover(px){
+    var v=Math.max(0,Math.round(px||0));
+    document.documentElement.style.setProperty('--lightbox-bottom-cover',v+'px');
+  }
+
+  function measureLightboxBottomLeak(){
+    if(!lightbox.classList.contains('active')) return 0;
+    var probeX=Math.round((window.innerWidth||0)/2);
+    var startY=Math.max(0,Math.round((window.innerHeight||0)-2));
+    if(startY<=0) return 0;
+    var first=document.elementFromPoint(probeX,startY);
+    if(!first) return 0;
+    if(first===lightbox||lightbox.contains(first)) return 0;
+    var leak=0;
+    var MAX_SCAN=260;
+    var STEP=4;
+    for(var y=startY;y>=0&&leak<MAX_SCAN;y-=STEP){
+      var el=document.elementFromPoint(probeX,y);
+      if(el&&(el===lightbox||lightbox.contains(el))){
+        break;
+      }
+      leak+=STEP;
+    }
+    return leak;
+  }
+
+  function syncLightboxBottomCover(){
+    if(!isFirefoxMobileBrowser){
+      setLightboxBottomCover(0);
+      return;
+    }
+    setLightboxBottomCover(measureLightboxBottomLeak());
+  }
+
   syncLightboxViewportHeight();
+  syncLightboxBottomCover();
   window.addEventListener('resize',function(){
     syncLightboxViewportHeight();
+    syncLightboxBottomCover();
   });
   if(window.visualViewport){
     window.visualViewport.addEventListener('resize',function(){
       syncLightboxViewportHeight();
+      syncLightboxBottomCover();
     });
   }
   window.addEventListener('orientationchange',function(){
     syncLightboxViewportHeight();
+    syncLightboxBottomCover();
     setTimeout(syncLightboxViewportHeight,420);
+    setTimeout(syncLightboxBottomCover,420);
   });
   window.addEventListener('pageshow',function(){
     syncLightboxViewportHeight();
+    syncLightboxBottomCover();
     setTimeout(syncLightboxViewportHeight,120);
+    setTimeout(syncLightboxBottomCover,120);
   });
 
   function beginLightboxLoadingState(){
@@ -2492,6 +2544,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
   function openLightbox(){
     syncLightboxViewportHeight();
+    syncLightboxBottomCover();
     const realIdx=filtered[current];
     const photoNum=realIdx+1;
     beginLightboxLoadingState();
@@ -2522,6 +2575,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
 
     lightbox.classList.add('active');
     document.body.style.overflow='hidden';
+    requestAnimationFrame(syncLightboxBottomCover);
+    setTimeout(syncLightboxBottomCover,120);
 
     // Re-check compact caption state on open
     if(window._updateCompactCaption) window._updateCompactCaption();
@@ -2547,6 +2602,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     clearCaptionClampTimers();
     endLightboxLoadingState();
     lightbox.classList.remove('active');
+    setLightboxBottomCover(0);
     document.body.style.overflow='';
     lbImg.src='';
     resetLightboxPreloaders();
