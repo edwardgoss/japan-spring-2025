@@ -1901,6 +1901,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   let rotationAnchorLocked=false;
   let suppressAnchorTrackingScroll=false;
   const useCustomOrientationAnchoring=true;
+  const useEarlyPhoneOrientationAnchor=isCoarsePointer&&!isIPadLike;
   const ORIENTATION_SETTLE_MS=isSafariBrowser?640:420;
   const ORIENTATION_FINALIZE_DELAY_MS=isSafariBrowser?560:360;
   const ORIENTATION_UI_SETTLE_MS=isSafariBrowser?720:520;
@@ -1913,6 +1914,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   let userScrolledDuringOrientationSettle=false;
   let safariOrientationAnchorApplied=false;
   let safariEarlyAnchorToken=0;
+  let phoneOrientationAnchorApplied=false;
+  let phoneEarlyAnchorToken=0;
   let chromeMidScrollRotation=false;
   let latestScrollAnchor=null;
   let latestScrollAnchorAt=0;
@@ -2244,6 +2247,10 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
         // that can interrupt resumed scrolling after the initial settle pass.
         layout();
         updateNowShowing();
+      }else if(!isSafariBrowser&&phoneOrientationAnchorApplied){
+        // Phone browsers that received an early anchor pass should not re-snap.
+        layout();
+        updateNowShowing();
       }else if(isSafariBrowser&&safariOrientationAnchorApplied){
         // Safari already received an anchored pass during settle; avoid re-snapping.
         layout();
@@ -2256,6 +2263,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       }
       safariOrientationAnchorApplied=false;
       safariEarlyAnchorToken++;
+      phoneOrientationAnchorApplied=false;
+      phoneEarlyAnchorToken++;
       if(Date.now()>=orientationSettleUntil){
         chromeMidScrollRotation=false;
       }
@@ -2295,6 +2304,22 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     });
   }
 
+  function schedulePhoneEarlyOrientationAnchor(){
+    if(isSafariBrowser||!useEarlyPhoneOrientationAnchor||!preferredRotationAnchor) return;
+    var token=++phoneEarlyAnchorToken;
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        if(token!==phoneEarlyAnchorToken) return;
+        if(lightbox.classList.contains('active')) return;
+        if(Date.now()>=orientationSettleUntil) return;
+        if(phoneOrientationAnchorApplied) return;
+        if(shouldSkipForcedOrientationAnchor()) return;
+        applyAnchoredRelayout(preferredRotationAnchor);
+        phoneOrientationAnchorApplied=true;
+      });
+    });
+  }
+
   window.addEventListener('resize',function(){
     if(lightbox.classList.contains('active')){
       pendingLayoutAfterLightbox=true;
@@ -2314,10 +2339,19 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       return;
     }
     if(inOrientationSettle&&!isSafariBrowser){
-      // Non-Safari mobile gets a single orientation-change anchor pass.
-      // Resize bursts during settle should only refresh geometry.
-      layout();
-      updateNowShowing();
+      if(useEarlyPhoneOrientationAnchor){
+        if(!phoneOrientationAnchorApplied&&preferredRotationAnchor&&!shouldSkipForcedOrientationAnchor()){
+          applyAnchoredRelayout(preferredRotationAnchor);
+          phoneOrientationAnchorApplied=true;
+        }else{
+          layout();
+          updateNowShowing();
+        }
+      }else{
+        // Larger non-Safari devices keep resize-settle layout-only behavior.
+        layout();
+        updateNowShowing();
+      }
       scheduleOrientationFinalize();
       return;
     }
@@ -2335,6 +2369,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     }
     // During orientation settle, coalesce resize bursts into one anchored relayout.
     var delay=inOrientationSettle?80:100;
+    if(inOrientationSettle&&useEarlyPhoneOrientationAnchor){
+      delay=0;
+    }
     var forced=inOrientationSettle?preferredRotationAnchor:null;
     scheduleAnchoredRelayout(delay,forced);
     if(inOrientationSettle) scheduleOrientationFinalize();
@@ -2346,6 +2383,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     userScrolledDuringOrientationSettle=false;
     safariOrientationAnchorApplied=false;
     safariEarlyAnchorToken++;
+    phoneOrientationAnchorApplied=false;
+    phoneEarlyAnchorToken++;
     chromeMidScrollRotation=isChromeMidScrollAtOrientation(nowTs);
     lastRelayoutViewportWidth=getLayoutViewportWidth();
     startOrientationUiSettle();
@@ -2362,8 +2401,10 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     if(!userScrolledDuringOrientationSettle){
       if(isSafariBrowser){
         scheduleSafariEarlyOrientationAnchor();
+      }else if(useEarlyPhoneOrientationAnchor){
+        schedulePhoneEarlyOrientationAnchor();
       }else{
-        scheduleAnchoredRelayout(80,preferredRotationAnchor);
+        scheduleAnchoredRelayout(0,preferredRotationAnchor);
       }
       if(chromeMidScrollRotation){
         // Preserve gallery anchor first; run Chrome viewport health pass after settle.
