@@ -1784,10 +1784,21 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   function isMenuGhostTap(){
     return phoneMenuMode&&menuOpen&&(Date.now()-menuOpenedAt)<220;
   }
+  function normalizePhoneMenuScroll(forceTop){
+    if(!menuOpen||!phoneMenuMode) return;
+    var maxScroll=Math.max(0,menuDropdown.scrollHeight-menuDropdown.clientHeight);
+    var targetTop=forceTop?0:Math.max(0,Math.min(menuDropdown.scrollTop,maxScroll));
+    if(Math.abs((menuDropdown.scrollTop||0)-targetTop)>1){
+      menuDropdown.scrollTop=targetTop;
+    }
+  }
   function handleMenuViewportUpdate(){
     syncPhoneMenuMode();
     if(!menuOpen) return;
-    if(phoneMenuMode) return;
+    if(phoneMenuMode){
+      normalizePhoneMenuScroll(false);
+      return;
+    }
     scheduleMenuDropdownPosition();
   }
 
@@ -1845,7 +1856,13 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   },{passive:true});
   window.addEventListener('orientationchange',function(){
     handleMenuViewportUpdate();
-    if(!menuOpen||phoneMenuMode) return;
+    if(!menuOpen) return;
+    if(phoneMenuMode){
+      setTimeout(function(){normalizePhoneMenuScroll(true)},40);
+      setTimeout(function(){normalizePhoneMenuScroll(true)},180);
+      setTimeout(function(){normalizePhoneMenuScroll(true)},360);
+      return;
+    }
     setTimeout(scheduleMenuDropdownPosition,80);
     setTimeout(scheduleMenuDropdownPosition,320);
   });
