@@ -1906,12 +1906,14 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const ORIENTATION_UI_SETTLE_MS=isSafariBrowser?720:520;
   const USER_SCROLL_INTENT_WINDOW_MS=280;
   const SCROLL_ACTIVITY_WINDOW_MS=520;
+  const CHROME_MID_SCROLL_WINDOW_MS=180;
   let lastUserScrollIntentAt=0;
   let lastScrollEventAt=0;
   let orientationChangeStartedAt=0;
   let userScrolledDuringOrientationSettle=false;
   let safariOrientationAnchorApplied=false;
   let safariEarlyAnchorToken=0;
+  let chromeMidScrollRotation=false;
   const viewportMeta=document.querySelector('meta[name="viewport"]');
   let baseViewportMetaContent=viewportMeta?viewportMeta.getAttribute('content')||'':'';
   let chromeViewportCheckTimerA=null;
@@ -1952,6 +1954,11 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   function hasUserScrollIntentSinceOrientation(nowTs){
     if(!orientationChangeStartedAt) return false;
     return lastUserScrollIntentAt>orientationChangeStartedAt+24&&nowTs<orientationSettleUntil;
+  }
+
+  function isChromeMidScrollAtOrientation(nowTs){
+    if(!isChromeMobileBrowser||!isCoarsePointer) return false;
+    return (nowTs-lastScrollEventAt)<=CHROME_MID_SCROLL_WINDOW_MS;
   }
 
   function shouldSkipForcedOrientationAnchor(){
@@ -2053,6 +2060,11 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     var unhealthy=isChromeViewportUnhealthy();
     if(!force&&!unhealthy) return;
     var nowTs=Date.now();
+    if(chromeMidScrollRotation&&nowTs<orientationSettleUntil+140){
+      var deferred=Math.max(120,(orientationSettleUntil-nowTs)+140);
+      scheduleChromeViewportHealthCheck(deferred,false);
+      return;
+    }
     var viewportUpdated=applyChromeNoZoomViewport();
     if(!unhealthy){
       // Avoid no-op force passes from interrupting touch scroll inertia.
@@ -2212,6 +2224,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
       }
       safariOrientationAnchorApplied=false;
       safariEarlyAnchorToken++;
+      if(Date.now()>=orientationSettleUntil){
+        chromeMidScrollRotation=false;
+      }
       document.documentElement.classList.remove('orientation-settling');
     },ORIENTATION_FINALIZE_DELAY_MS);
   }
@@ -2291,6 +2306,10 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     userScrolledDuringOrientationSettle=false;
     safariOrientationAnchorApplied=false;
     safariEarlyAnchorToken++;
+    chromeMidScrollRotation=isChromeMidScrollAtOrientation(nowTs);
+    if(chromeMidScrollRotation){
+      userScrolledDuringOrientationSettle=true;
+    }
     lastRelayoutViewportWidth=getLayoutViewportWidth();
     startOrientationUiSettle();
     if(lightbox.classList.contains('active')){
