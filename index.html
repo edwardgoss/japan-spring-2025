@@ -388,6 +388,7 @@
   .lightbox{
     position:fixed;inset:0;z-index:100;
     background:var(--lightbox-bg);
+    --lightbox-top-clearance:0px;
     display:none;
     grid-template-rows:minmax(0,1fr) auto;
     align-items:stretch;
@@ -648,6 +649,23 @@
     }
   }
 
+  /* Chrome mobile portrait: reserve a small top control gutter so tall
+     portrait photos do not sit under the close button. */
+  @media (orientation: portrait) and (hover: none) and (pointer: coarse){
+    html.chrome-mobile .lightbox{
+      --lightbox-top-clearance:calc(34px + env(safe-area-inset-top));
+    }
+    html.chrome-mobile .lightbox img{
+      max-height:calc(100vh - var(--caption-h,80px) - (var(--lightbox-photo-gap) * 2) - var(--lightbox-top-clearance));
+      max-height:calc(100dvh - var(--caption-h,80px) - (var(--lightbox-photo-gap) * 2) - var(--lightbox-top-clearance));
+      margin-top:calc(var(--lightbox-photo-gap) + var(--lightbox-top-clearance));
+    }
+    html.chrome-mobile .lightbox-close{
+      top:calc(8px + env(safe-area-inset-top));
+      right:calc(20px + env(safe-area-inset-right));
+    }
+  }
+
   @media (max-width: 600px) and (hover: none) and (pointer: coarse){
     /* Keep touch input text legible while avoiding oversized menu text */
     .menu-search input{font-size:16px;}
@@ -832,6 +850,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   const isSafariBrowser=/Safari/i.test(ua)&&!/Chrome|CriOS|FxiOS|EdgiOS|OPiOS|OPR|Android/i.test(ua);
   const isFirefoxBrowser=/Firefox/i.test(ua)&&!/FxiOS/i.test(ua);
   const isChromeMobileBrowser=/Chrome|CriOS/i.test(ua)&&!/EdgA|EdgiOS|OPR|OPiOS|SamsungBrowser|YaBrowser|UCBrowser/i.test(ua)&&(/Android/i.test(ua)||/CriOS/i.test(ua));
+  if(isChromeMobileBrowser){
+    document.documentElement.classList.add('chrome-mobile');
+  }
   const INITIAL_EAGER = isIOSLike
     ? (isIPadLike?8:9)
     : (window.innerWidth <= 800 ? (isSafariBrowser ? 14 : 10) : (isSafariBrowser ? 18 : 14));
