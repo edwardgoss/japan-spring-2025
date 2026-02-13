@@ -389,6 +389,7 @@
     position:fixed;inset:0;z-index:100;
     background:var(--lightbox-bg);
     --lightbox-top-clearance:0px;
+    --lightbox-spinner-size:32px;
     display:none;
     grid-template-rows:minmax(0,1fr) auto;
     align-items:stretch;
@@ -503,9 +504,10 @@
 
   .lightbox-spinner{
     position:absolute;
-    top:max(12px, calc(8px + env(safe-area-inset-top)));
-    left:max(12px, calc(8px + env(safe-area-inset-left)));
-    width:36px;height:36px;
+    top:calc(50% - var(--caption-h,80px) / 2 - (var(--lightbox-spinner-size) / 2));
+    left:calc(50% - (var(--lightbox-spinner-size) / 2));
+    width:var(--lightbox-spinner-size);
+    height:var(--lightbox-spinner-size);
     border:3px solid rgba(255,255,255,.2);
     border-top-color:#fff;
     border-radius:50%;
@@ -665,10 +667,6 @@
       max-height:calc(100vh - var(--caption-h,80px) - (var(--lightbox-photo-gap) * 2) - var(--lightbox-top-clearance));
       max-height:calc(100dvh - var(--caption-h,80px) - (var(--lightbox-photo-gap) * 2) - var(--lightbox-top-clearance));
       margin-top:calc(var(--lightbox-photo-gap) + var(--lightbox-top-clearance));
-    }
-    .lightbox-spinner{
-      width:30px;
-      height:30px;
     }
   }
 
@@ -1413,7 +1411,7 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   let lightboxOpenWidth=0;
   let lightboxOpenScrollY=0;
   let lightboxRotatedWhileOpen=false;
-  const LIGHTBOX_SPINNER_DELAY_MS=130;
+  const LIGHTBOX_SPINNER_DELAY_MS=150;
   let lightboxSpinnerDelayTimer=null;
   const lightboxPreloadAhead=new Image();
   const lightboxPreloadBehind=new Image();
