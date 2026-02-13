@@ -2208,19 +2208,28 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     }
   }
 
-  function scheduleLayoutAfterLightbox(){
+  function scheduleLayoutAfterLightbox(options){
     lightboxSettleToken++;
     var settleToken=lightboxSettleToken;
     var baselineScrollY=window.scrollY||0;
+    var allowScrollRestore=!(options&&options.allowScrollRestore===false);
     function userHasScrolledSinceClose(){
       return Math.abs((window.scrollY||0)-baselineScrollY)>2;
     }
+    function hasActiveScrollInput(){
+      var nowTs=Date.now();
+      return hasRecentUserScrollIntent(nowTs)||isScrollRecentlyActive(nowTs);
+    }
     function run(){
       if(settleToken!==lightboxSettleToken) return;
-      if(userHasScrolledSinceClose()) return;
+      if(userHasScrolledSinceClose()||hasActiveScrollInput()) return;
       var scrollBeforeLayout=window.scrollY||0;
       layout();
-      if(Math.abs((window.scrollY||0)-scrollBeforeLayout)>1){
+      if(
+        allowScrollRestore&&
+        Math.abs((window.scrollY||0)-scrollBeforeLayout)>1&&
+        !hasActiveScrollInput()
+      ){
         withSuppressedAnchorTracking(function(){
           window.scrollTo({left:0,top:scrollBeforeLayout,behavior:'instant'});
         });
@@ -2969,8 +2978,9 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     lightboxRotatedWhileOpen=false;
 
     // Re-layout follow-up in case viewport continues settling after close.
+    var allowPostCloseScrollRestore=!(hadRotation&&isSafariBrowser&&isIPadLike);
     pendingLayoutAfterLightbox=false;
-    scheduleLayoutAfterLightbox();
+    scheduleLayoutAfterLightbox({allowScrollRestore:allowPostCloseScrollRestore});
   }
 
   function navigate(dir){
