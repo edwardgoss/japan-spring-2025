@@ -741,13 +741,14 @@
     -webkit-backdrop-filter:blur(2px);
   }
   html.phone-menu-mode .menu-dropdown{
-    position:fixed;
-    top:var(--header-offset,0px);
+    position:absolute;
+    top:100%;
     left:0;
     right:0;
-    bottom:0;
-    width:100vw;
+    width:auto;
     max-width:none;
+    height:calc(100dvh - 100%);
+    max-height:calc(100dvh - 100%);
     border-radius:0;
     box-shadow:none;
     padding:
@@ -1686,11 +1687,14 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   }
   function computePhoneMenuMode(){
     var coarseTouch=window.matchMedia('(hover: none) and (pointer: coarse)').matches;
-    if(!coarseTouch) return false;
+    var hasTouch=(navigator.maxTouchPoints||0)>0||('ontouchstart' in window);
+    if(!coarseTouch&&!hasTouch) return false;
     var vm=getMenuViewportMetrics();
-    var shortSide=Math.min(vm.width||0,vm.height||0);
-    var longSide=Math.max(vm.width||0,vm.height||0);
-    return shortSide>0&&shortSide<=520&&longSide<=980;
+    var vw=vm.width||window.innerWidth||document.documentElement.clientWidth||0;
+    var vh=vm.height||window.innerHeight||0;
+    var shortSide=Math.min(vw,vh);
+    var longSide=Math.max(vw,vh);
+    return shortSide>0&&shortSide<=600&&longSide<=1200;
   }
   function syncPhoneMenuMode(){
     var next=computePhoneMenuMode();
