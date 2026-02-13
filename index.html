@@ -503,14 +503,18 @@
 
   .lightbox-spinner{
     position:absolute;
+    top:max(12px, calc(8px + env(safe-area-inset-top)));
+    left:max(12px, calc(8px + env(safe-area-inset-left)));
     width:36px;height:36px;
     border:3px solid rgba(255,255,255,.2);
     border-top-color:#fff;
     border-radius:50%;
     animation:spin .7s linear infinite;
+    pointer-events:none;
+    z-index:111;
     display:none;
   }
-  .lightbox.loading .lightbox-spinner{display:block}
+  .lightbox.loading-visible .lightbox-spinner{display:block}
   @keyframes spin{to{transform:rotate(360deg)}}
 
   /* ── Scroll to top ── */
@@ -1408,6 +1412,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
   let lightboxOpenWidth=0;
   let lightboxOpenScrollY=0;
   let lightboxRotatedWhileOpen=false;
+  const LIGHTBOX_SPINNER_DELAY_MS=130;
+  let lightboxSpinnerDelayTimer=null;
   const lightboxPreloadAhead=new Image();
   const lightboxPreloadBehind=new Image();
   let lastLightboxPreloadAhead=-1;
@@ -2424,12 +2430,31 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     window.scrollTo({left:0,top:Math.max(0,m.top-headerH-10),behavior:'instant'});
   }
 
+  function beginLightboxLoadingState(){
+    clearTimeout(lightboxSpinnerDelayTimer);
+    lightbox.classList.add('loading');
+    lightbox.classList.remove('loading-visible');
+    lightboxSpinnerDelayTimer=setTimeout(function(){
+      if(lightbox.classList.contains('loading')){
+        lightbox.classList.add('loading-visible');
+      }
+    },LIGHTBOX_SPINNER_DELAY_MS);
+  }
+
+  function endLightboxLoadingState(){
+    clearTimeout(lightboxSpinnerDelayTimer);
+    lightbox.classList.remove('loading','loading-visible');
+  }
+
   function openLightbox(){
     const realIdx=filtered[current];
     const photoNum=realIdx+1;
-    lightbox.classList.add('loading');
+    beginLightboxLoadingState();
     lbImg.onload=function(){
-      lightbox.classList.remove('loading');
+      endLightboxLoadingState();
+    };
+    lbImg.onerror=function(){
+      endLightboxLoadingState();
     };
     lbImg.src=photoSrc(realIdx);
     lbImg.alt='Japan Spring 2025 - Photo '+photoNum;
@@ -2475,7 +2500,8 @@ if('scrollRestoration' in history) history.scrollRestoration='manual';
     var shouldSyncToTarget=(didNavigate||viewportChanged||hadRotation)&&targetIndex>=0;
 
     clearCaptionClampTimers();
-    lightbox.classList.remove('active','loading');
+    endLightboxLoadingState();
+    lightbox.classList.remove('active');
     document.body.style.overflow='';
     lbImg.src='';
     resetLightboxPreloaders();
